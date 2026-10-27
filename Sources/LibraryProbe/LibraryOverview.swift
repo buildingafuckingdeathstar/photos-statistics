@@ -1,12 +1,13 @@
 import Foundation
 
 public enum OriginalAvailability: String, CaseIterable, Codable, Sendable {
-    case local, remote, review
+    case local, remote, shared, review
 
     public var title: String {
         switch self {
         case .local: "Original on this Mac"
         case .remote: "Original absent, remote reported"
+        case .shared: "Shared Album copies"
         case .review: "Availability to review"
         }
     }
@@ -57,6 +58,30 @@ public struct PhotoRecord: Identifiable, Sendable {
     public let availability: OriginalAvailability
     public let reason: ReviewReason?
     public let evidence: String
+    public let assetUUID: String?
+    public let pixelWidth: Int?
+    public let pixelHeight: Int?
+}
+
+public enum PreviewIdentity {
+    // PhotoKit identifiers are opaque. Recognize only the observed UUID form,
+    // retain the full fetched identifier, and fail closed if this format changes.
+    public static func uuidComponent(of identifier: String) -> String? {
+        guard let component = identifier.split(separator: "/").first,
+              let uuid = UUID(uuidString: String(component)) else { return nil }
+        return uuid.uuidString
+    }
+
+    public static func matches(_ photo: PhotoRecord, identifier: String, date: Date?, width: Int, height: Int) -> Bool {
+        guard let sourceUUID = photo.assetUUID.flatMap(UUID.init(uuidString:)),
+              uuidComponent(of: identifier) == sourceUUID.uuidString,
+              let sourceDate = photo.captureDate, let date,
+              abs(sourceDate.timeIntervalSince(date)) < 2,
+              let sourceWidth = photo.pixelWidth, let sourceHeight = photo.pixelHeight,
+              sourceWidth > 0, sourceHeight > 0,
+              sourceWidth == width, sourceHeight == height else { return false }
+        return true
+    }
 }
 
 public struct LibraryOverview: Sendable {

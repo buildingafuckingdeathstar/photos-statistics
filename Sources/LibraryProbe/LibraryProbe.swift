@@ -116,7 +116,7 @@ public enum LibraryProbe {
         let userVersion = try snapshot.rows("PRAGMA user_version").first?.first ?? nil
         var lines = [
             "Photos database access probe",
-            "Probe revision: library-overview-v1",
+            "Probe revision: photo-browser-v2",
             "System: \(ProcessInfo.processInfo.operatingSystemVersionString)",
             "Source opened read-only: yes",
             "Consistent snapshot and quick_check: passed",

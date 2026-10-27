@@ -11,9 +11,11 @@ The first app milestone is a read-only library overview and availability review.
 - Open the local-original, remote-reported and uncertain-availability groups.
 - Break uncertain availability into specific, mutually exclusive reasons.
 - Search photos by original filename or camera, and inspect the evidence for a selected record.
+- Switch between **Photos** (a lazy, scrollable thumbnail grid) and **List**, with shared filters and selection.
+- Recognize Shared Album copies separately from managed originals.
 - Refresh a consistent database snapshot without downloading originals.
 
-This version displays metadata records, not image thumbnails. The photo detail panel uses a generic icon. It has no PhotoKit write capability and does not change locations, albums, original files, or database records.
+Local thumbnails are optional and require a separate Photos permission. The first tab is **Photos**; **List** retains the detailed table. The grid scrolls through all filtered records, requests previews only for visible cells, and has a photo-size slider. It does not download images to fill gaps; unavailable or unmatched previews show placeholders. There are no PhotoKit change requests: locations, albums, original files and database records are not modified by this app.
 
 ## Run the command-line probe
 
@@ -35,8 +37,11 @@ Requires Xcode with the macOS 14 or newer SDK. Open `PhotosStatistics.xcodeproj`
 2. Select your `.photoslibrary` package. A folder containing `Photos.sqlite` is also accepted for development fixtures.
 3. Explore **Overview**, **All photos**, and **Availability review**. Select a table row for its explanation and evidence.
 4. The **Diagnostics** view retains the aggregate report; its toolbar copies that report only when clicked.
+5. In a photo browser's **Photos** tab, click **Enable local previews** if you want thumbnails. macOS asks for Photos access. The app never opens that permission prompt automatically on startup.
 
-The app requests App Sandbox plus user-selected **read-only** file access. It has no network entitlement, requests no image data, and does not use PhotoKit to download originals. A read-only security-scoped bookmark remembers your selection. On launch, the app restores that access without displaying a chooser and refreshes the report. If access is stale, choose the library again.
+The app uses App Sandbox plus user-selected **read-only** file access for the metadata scan. It has no network entitlement. The scan requests no image data. A read-only security-scoped bookmark remembers your selection; on launch, the app restores it without displaying a chooser and refreshes the report. If access is stale, choose the library again.
+
+Previews use the public PhotoKit image manager with `isNetworkAccessAllowed=false` and a small target size. macOS requires the Photos Library entitlement and Photos authorization; the supported access level is named `readWrite`, although this build implements no writes. See [the photo browser design](docs/photo-browser.md) for matching, privacy and preview limitations.
 
 The latest aggregate diagnostic report is written locally to `PhotosStatistics/last-probe-report.txt` under the app's Application Support folder. `last-overview-summary.json` contains aggregate counts and reason totals. No database snapshot, per-photo identifiers, or per-photo metadata values are saved there. Browsable photo records stay in memory for the session. The bookmark is stored separately in the app's preferences. These local files are not uploaded. Relaunch the app after rebuilding to use new logic.
 

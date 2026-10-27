@@ -22,10 +22,12 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Photos Statistics
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.photography
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Show locally available thumbnails for matching photos in your System Photo Library. This version does not change your photos or albums.
         ENABLE_APP_SANDBOX: YES
         CODE_SIGN_ENTITLEMENTS: Sources/PhotosAccessProbe/PhotosAccessProbe.entitlements
     dependencies:
       - sdk: libsqlite3.tbd
+      - sdk: Photos.framework
 schemes:
   PhotosAccessProbe:
     build:

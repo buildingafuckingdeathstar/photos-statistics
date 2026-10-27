@@ -19,8 +19,8 @@ struct OverviewScreen: View {
                     Label("Photo dates: \(start.formatted(date: .abbreviated, time: .omitted)) – \(end.formatted(date: .abbreviated, time: .omitted))", systemImage: "calendar").foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Where are your originals?").font(.title2.bold())
-                    Text("These groups describe managed primary originals. A local preview does not count as an original.").font(.callout).foregroundStyle(.secondary)
+                    Text("Library storage").font(.title2.bold())
+                    Text("Managed originals and Shared Album copies are shown separately. A local preview does not count as an original.").font(.callout).foregroundStyle(.secondary)
                     ForEach(OriginalAvailability.allCases, id: \.self) { status in
                         Button {
                             if status == .review { model.showReview(nil) } else { model.showPhotos(status) }
@@ -53,7 +53,7 @@ struct OverviewScreen: View {
                         Divider()
                     }
                 }
-                Text("Counts include active photos, hidden photos and burst members. Videos are counted separately. No library changes have been made.").font(.caption).foregroundStyle(.secondary)
+                Text("Photo counts include Shared Album copies, hidden photos and burst members; they are not unique-image counts. Videos are counted separately. No library changes have been made.").font(.caption).foregroundStyle(.secondary)
             }.padding(28)
         }
     }
@@ -74,15 +74,16 @@ struct SummaryTile: View {
 
 extension OriginalAvailability {
     var icon: String {
-        switch self { case .local: "internaldrive"; case .remote: "icloud"; case .review: "questionmark.folder" }
+        switch self { case .local: "internaldrive"; case .remote: "icloud"; case .shared: "person.2.crop.square.stack"; case .review: "questionmark.folder" }
     }
     var tint: Color {
-        switch self { case .local: .green; case .remote: .blue; case .review: .orange }
+        switch self { case .local: .green; case .remote: .blue; case .shared: .purple; case .review: .orange }
     }
     var detail: String {
         switch self {
         case .local: "Photos and file presence agree that the managed original is local."
         case .remote: "The managed original is absent; Photos reports a remote copy."
+        case .shared: "Photos identifies these as Shared Album copies, which do not establish full-original availability."
         case .review: "The current checks cannot confidently classify these originals."
         }
     }

@@ -43,6 +43,7 @@ final class LibraryModel: ObservableObject {
     @Published var section: LibrarySection? = .overview
     @Published var photoFilter: OriginalAvailability?
     @Published var reviewReason: ReviewReason?
+    let previews = PhotoPreviewStore()
     private var selectedURL: URL?
     private var restored = false
 
@@ -168,7 +169,7 @@ struct LibraryWindow: View {
                 } else if let overview = model.overview {
                     switch model.section ?? .overview {
                     case .overview: OverviewScreen(model: model, overview: overview)
-                    case .photos: PhotoBrowser(overview: overview, status: $model.photoFilter, reason: nil)
+                    case .photos: PhotoBrowser(overview: overview, status: $model.photoFilter, reason: nil, previews: model.previews)
                     case .review: ReviewScreen(model: model, overview: overview)
                     case .diagnostics: EmptyView()
                     }

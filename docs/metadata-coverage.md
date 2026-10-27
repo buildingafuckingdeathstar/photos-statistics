@@ -13,9 +13,11 @@ This adapter is gated to the structural fingerprint observed during the successf
 
 ## Original availability
 
-Original resource rows are matched by both asset ID and `ZORIGINALSTABLEHASH` (or the older `ZMASTERFINGERPRINT`) against `ZINTERNALRESOURCE.ZFINGERPRINT`. Multiple original-resource matches are aggregated and must agree; previews with other fingerprints cannot make an original appear local.
+Original resource rows are matched by both asset ID and `ZORIGINALSTABLEHASH` (or the older `ZMASTERFINGERPRINT`) against `ZINTERNALRESOURCE.ZFINGERPRINT`. Multiple original-resource matches are aggregated and must agree; previews with other fingerprints cannot make an original appear local. When the fingerprint is empty, a fallback is permitted only if there is exactly one directly linked original-image resource (`ZDATASTORESUBTYPE=1`, `ZRESOURCETYPE=0`). Multiple candidates remain unresolved. This fallback retains the availability checks and file-presence cross-check.
 
-The adapter cross-checks reported availability with attributes at the managed path `originals/<ZDIRECTORY>/<ZFILENAME>`. It reads attributes only, never image data. Absolute/referenced paths, traversal, symlinks, access errors and ambiguous resource states remain unknown.
+Shared Albums use a different representation. A photo is categorized as a **Shared Album copy** only when `ZASSET.ZCOLLECTIONSHARE` resolves to a `ZSHARE` row whose Core Data entity is `CollectionShare`, determined through `Z_PRIMARYKEY`. The entity number is not hard-coded. `LibraryScope` and other share entities do not qualify. Shared copies are not put in the original-availability groups: their existence does not establish whether a full-resolution original is available elsewhere. Copies may duplicate images in the personal library, so overview totals are photo-record counts, not unique-image counts.
+
+For non-shared photos, the adapter cross-checks reported availability with attributes at the managed path `originals/<ZDIRECTORY>/<ZFILENAME>`. It reads attributes only, never image data. Absolute/referenced paths, traversal, symlinks, access errors and ambiguous resource states remain unknown. The non-applicable managed-original path is not checked for confirmed Shared Album copies.
 
 - **Present:** all matched original resources report local availability `1` and the managed file exists.
 - **Absent, remote reported available:** all matched original resources report local availability `-1`, remote availability `1`, and the managed file is absent.
@@ -39,6 +41,6 @@ Apple's database is undocumented. Runtime relationship checks and conservative u
 
 The overview and review browser use the same structured photo records as the coverage report. Each uncertain photo gets one primary reason. Path/access problems take precedence, followed by an absent original reference, unmatched resources, incomplete or conflicting availability, unrecognized states, file/database disagreement, and unconfirmed remote availability. This precedence makes totals mutually exclusive; it does not mean a photo has only one possible underlying issue.
 
-The reference test is based on the selected original fingerprint column. A missing reference does not imply the original was deleted. Alternate paths, legacy fingerprints and resource relationships are future investigation areas, not grounds for changing Photos' database.
+The reference test uses the original fingerprint or the unique direct-original fallback described above. A missing reference does not imply the original was deleted. The diagnostic report includes an aggregate inventory of alternate reference columns and resource profiles. Unrelated hashes, such as location hashes or owner hashes, are inventoried but never used as original-resource identities.
 
-The browser keeps names, dates, camera models and evidence in process memory. It does not persist a per-photo index yet. Only counts and reason totals are saved for diagnostics. Image thumbnails, trip grouping and any PhotoKit edits are separate later milestones.
+The browser keeps names, dates, camera models, asset identifiers and evidence in process memory. It does not persist a per-photo index yet. Only counts and reason totals are saved for diagnostics. Optional local thumbnails use PhotoKit separately; trip grouping and any PhotoKit edits remain later milestones.

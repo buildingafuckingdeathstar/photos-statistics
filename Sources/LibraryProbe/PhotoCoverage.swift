@@ -120,6 +120,14 @@ enum PhotoCoverage {
         let dateSQL = optional("a", "ZASSET", "ZDATECREATED")
         let cameraSQL = optional("e", "ZEXTENDEDATTRIBUTES", "ZCAMERAMODEL")
         let originalNameSQL = optional("d", "ZADDITIONALASSETATTRIBUTES", "ZORIGINALFILENAME")
+        let uuidSQL = optional("a", "ZASSET", "ZUUID")
+        let widthSQL = optional("a", "ZASSET", "ZWIDTH")
+        let heightSQL = optional("a", "ZASSET", "ZHEIGHT")
+        let supportsShared = has("ZASSET", "ZCOLLECTIONSHARE") && has("ZSHARE", "Z_PK") && has("ZSHARE", "Z_ENT")
+            && has("Z_PRIMARYKEY", "Z_ENT") && has("Z_PRIMARYKEY", "Z_NAME")
+        let sharedSQL = supportsShared ? "EXISTS (SELECT 1 FROM ZSHARE sh JOIN Z_PRIMARYKEY ent ON ent.Z_ENT=sh.Z_ENT WHERE sh.Z_PK=a.ZCOLLECTIONSHARE AND ent.Z_NAME='CollectionShare')" : "0"
+        let fallbackWhere = has("ZINTERNALRESOURCE", "ZDATASTORESUBTYPE") && has("ZINTERNALRESOURCE", "ZRESOURCETYPE")
+            ? "ZDATASTORESUBTYPE=1 AND ZRESOURCETYPE=0" : "0"
         progress("Matching photos to their original resources…")
         // Aggregate all matches per original fingerprint so RAW/live-photo/derivative rows
         // cannot multiply photos or let a local preview stand in for an original.
@@ -131,30 +139,43 @@ enum PhotoCoverage {
                      COUNT(ZREMOTEAVAILABILITY) remote_n, MIN(ZREMOTEAVAILABILITY) remote_min,
                      MAX(ZREMOTEAVAILABILITY) remote_max
               FROM ZINTERNALRESOURCE GROUP BY ZASSET, ZFINGERPRINT
+            ), original_fallback AS (
+              SELECT ZASSET,COUNT(*) n,COUNT(ZLOCALAVAILABILITY) local_n,MIN(ZLOCALAVAILABILITY) local_min,
+                     MAX(ZLOCALAVAILABILITY) local_max,COUNT(ZREMOTEAVAILABILITY) remote_n,
+                     MIN(ZREMOTEAVAILABILITY) remote_min,MAX(ZREMOTEAVAILABILITY) remote_max
+              FROM ZINTERNALRESOURCE WHERE \(fallbackWhere) GROUP BY ZASSET
             )
-            SELECT a.ZDIRECTORY, a.ZFILENAME, r.n, r.local_n, r.local_min, r.local_max,
-                   r.remote_n, r.remote_min, r.remote_max, e.ZASSET, \(metricSQL),
-                   a.Z_PK, \(dateSQL), \(cameraSQL), hex(d.\(hashColumn)), \(originalNameSQL)
+            SELECT a.ZDIRECTORY, a.ZFILENAME, COALESCE(r.n,f.n), COALESCE(r.local_n,f.local_n),
+                   COALESCE(r.local_min,f.local_min), COALESCE(r.local_max,f.local_max),
+                   COALESCE(r.remote_n,f.remote_n), COALESCE(r.remote_min,f.remote_min), COALESCE(r.remote_max,f.remote_max),
+                   e.ZASSET, \(metricSQL), a.Z_PK, \(dateSQL), \(cameraSQL),
+                   CASE WHEN f.n=1 THEN 'unique-direct-original' ELSE hex(d.\(hashColumn)) END, \(originalNameSQL),
+                   \(uuidSQL), \(widthSQL), \(heightSQL), \(sharedSQL), CASE WHEN f.n=1 THEN 1 ELSE 0 END
             FROM ZASSET a
             LEFT JOIN ZEXTENDEDATTRIBUTES e ON e.ZASSET=a.Z_PK
             LEFT JOIN ZADDITIONALASSETATTRIBUTES d ON d.ZASSET=a.Z_PK
             LEFT JOIN resources r ON r.ZASSET=a.Z_PK AND r.ZFINGERPRINT=d.\(hashColumn)
+              AND d.\(hashColumn) IS NOT NULL AND length(d.\(hashColumn))>0
+            LEFT JOIN original_fallback f ON f.ZASSET=a.Z_PK AND f.n=1
+              AND (d.\(hashColumn) IS NULL OR length(d.\(hashColumn))=0) AND NOT (\(sharedSQL))
             WHERE a.ZKIND=0 AND a.ZTRASHEDSTATE=0
             """)
-        var totals = [0, 0, 0]
-        var counts = Array(repeating: Array(repeating: 0, count: metrics.count), count: 3)
+        var totals = [0, 0, 0, 0]
+        var counts = Array(repeating: Array(repeating: 0, count: metrics.count), count: 4)
         var withoutExif = 0
         var photos: [PhotoRecord] = []
         photos.reserveCapacity(rows.count)
         let locationIndex = metrics.firstIndex { $0.label == "Valid location coordinates" }
         for (rowIndex, row) in rows.enumerated() {
             if rowIndex % 2000 == 0 { progress("Checking originals: \(rowIndex.formatted()) of \(rows.count.formatted()) photos…") }
-            let found = checkPresence?(row[0], row[1]) ?? presence(library: library, directory: row[0], filename: row[1])
             let offset = 10 + metrics.count
-            let (status, reason) = classify(presence: found, fingerprint: row[offset + 3], resourceCount: row[2],
+            let shared = row[offset + 8] == "1"
+            let found = shared ? Presence.unsupportedPath : (checkPresence?(row[0], row[1]) ?? presence(library: library, directory: row[0], filename: row[1]))
+            let classification: (OriginalAvailability, ReviewReason?) = shared ? (.shared, nil) : classify(presence: found, fingerprint: row[offset + 3], resourceCount: row[2],
                                             localCount: row[3], localMin: row[4], localMax: row[5],
                                             remoteCount: row[6], remoteMin: row[7], remoteMax: row[8])
-            let bucket = status == .local ? 0 : status == .remote ? 1 : 2
+            let (status, reason) = classification
+            let bucket = status == .local ? 0 : status == .remote ? 1 : status == .shared ? 3 : 2
             let date = row[offset + 1].flatMap(Double.init).flatMap { $0.isFinite ? Date(timeIntervalSinceReferenceDate: $0) : nil }
             let camera = row[offset + 2]?.trimmingCharacters(in: .whitespacesAndNewlines)
             let fileStatus = switch found {
@@ -163,29 +184,33 @@ enum PhotoCoverage {
             case .unsupportedPath: "Alternative or unsupported path"
             case .unknown, .inaccessible: "Could not determine"
             }
-            let evidence = "Managed file: \(fileStatus)\nMatching original resources: \(row[2] ?? "0")\nLocal availability range: \(row[4] ?? "unknown") to \(row[5] ?? "unknown")\nRemote availability range: \(row[7] ?? "unknown") to \(row[8] ?? "unknown")"
+            let method = shared ? "Confirmed Shared Album relationship; full original not audited" : row[offset + 9] == "1" ? "Unique directly linked original resource (subtype 1, type 0)" : "Original fingerprint"
+            let evidence = "Reference: \(method)\nManaged file: \(shared ? "Not applicable to a Shared Album copy" : fileStatus)\nMatching original resources: \(row[2] ?? "0")\nLocal availability range: \(row[4] ?? "unknown") to \(row[5] ?? "unknown")\nRemote availability range: \(row[7] ?? "unknown") to \(row[8] ?? "unknown")"
             let originalName = row[offset + 4]?.trimmingCharacters(in: .whitespacesAndNewlines)
             let name = originalName?.isEmpty == false ? originalName! : (row[1] ?? "Unnamed photo")
             photos.append(PhotoRecord(id: row[offset] ?? "row-\(rowIndex)", filename: name,
                                       captureDate: date, camera: camera?.isEmpty == false ? camera : nil,
                                       hasLocation: locationIndex.map { row[10 + $0] == "1" } ?? false,
-                                      availability: status, reason: reason, evidence: evidence))
+                                      availability: status, reason: reason, evidence: evidence,
+                                      assetUUID: row[offset + 5], pixelWidth: row[offset + 6].flatMap(Int.init),
+                                      pixelHeight: row[offset + 7].flatMap(Int.init)))
             totals[bucket] += 1
             if row[9] == nil { withoutExif += 1 }
             for index in metrics.indices where row[10 + index] == "1" { counts[bucket][index] += 1 }
         }
         let labels = ["Original present (DB and file agree)",
-                      "Original absent; DB reports remote available", "Unknown or conflicting availability"]
+                      "Original absent; DB reports remote available", "Unknown or conflicting availability", "Shared Album copies (full original not audited)"]
         var output = ["", "PER-PHOTO METADATA COVERAGE — experimental adapter",
                       "Scope: active still-photo asset rows (ZKIND=0, ZTRASHEDSTATE=0); hidden and burst members included.",
                       "Videos excluded; Live Photos and RAW+JPEG pairs count as their owning still-photo asset.",
                       "Managed primary original only; this does not audit every RAW/Live Photo companion.",
-                      "Primary original resource matched by asset and \(hashColumn).",
+                      "Original resource matched by asset and \(hashColumn), or a unique directly linked subtype-1/type-0 original when the fingerprint is missing.",
+                      "Confirmed Shared Album copies are a separate category; their shared copy does not establish full-original availability.",
                       "Photo assets: \(rows.count); without an extended-metadata record: \(withoutExif).",
                       "Availability is database-reported and cross-checked with file attributes; no image bytes read.",
                       "Only local=1 and remote=1/nonlocal=-1 are interpreted; other or conflicting states stay unknown.",
                       "Remote availability is a local database claim, not a live check against iCloud."]
-        for bucket in 0..<3 {
+        for bucket in 0..<4 {
             output += ["", "\(labels[bucket]): \(totals[bucket]) photos"]
             for index in metrics.indices {
                 let expression = metrics[index].expression
@@ -203,6 +228,7 @@ enum PhotoCoverage {
         let overview = LibraryOverview(photos: photos, videoCount: videoCount, scanDate: Date(), fingerprint: observedFingerprint)
         output += ["", "REVIEW REASONS (mutually exclusive; not a damage diagnosis)"]
         for reason in ReviewReason.allCases { output.append("  \(reason.title): \(overview.count(reason))") }
+        output += try ReferenceInvestigation.report(db: db, schema: schema, hashColumn: hashColumn)
         return Result(lines: output, overview: overview)
     }
 }

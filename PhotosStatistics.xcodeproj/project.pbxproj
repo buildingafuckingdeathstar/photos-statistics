@@ -8,19 +8,25 @@
 
 /* Begin PBXBuildFile section */
 		13E63C2CA9691ABDA4481A70 /* OverviewScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A088A9B04961F68343C80A01 /* OverviewScreen.swift */; };
+		1D02FE63AD793BB7FCD8EF7D /* PhotoPreviewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BFB3708C9076B87AD26400C /* PhotoPreviewStore.swift */; };
 		2C798ABD376EF2BDF9F426A2 /* PhotoCoverage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC6AF8FE6F9C7D8201C76780 /* PhotoCoverage.swift */; };
 		4A7B3BAC9DF7ABDDB502B5F8 /* PhotoBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A855A1239B6D14F3B74E0002 /* PhotoBrowser.swift */; };
+		7D28983DB74A97F8263A18A7 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F9767554626D2467E4395BC /* Photos.framework */; };
 		B88F0F661B04D109140C2D56 /* LibraryOverview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF576227C3EB085F1299E12 /* LibraryOverview.swift */; };
 		C9C449BD165C97F13B422283 /* LibraryProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6180619D4F1A38E801E3A3A /* LibraryProbe.swift */; };
 		D74226444852013E87FEBC5D /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 012B39A2681545C2C092693B /* libsqlite3.tbd */; };
 		F2DC568D0D930C2F7EE7E14E /* PhotosAccessProbeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B4CD30593698B6CFFB537F /* PhotosAccessProbeApp.swift */; };
+		F7CB23CCA04D70A109F684CD /* ReferenceInvestigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D5D7467DEBD0E2C6811A3E /* ReferenceInvestigation.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		012B39A2681545C2C092693B /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		18B4CD30593698B6CFFB537F /* PhotosAccessProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosAccessProbeApp.swift; sourceTree = "<group>"; };
 		28722282F1B2355C22E6990D /* PhotosAccessProbe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PhotosAccessProbe.entitlements; sourceTree = "<group>"; };
+		6F9767554626D2467E4395BC /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
+		78D5D7467DEBD0E2C6811A3E /* ReferenceInvestigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceInvestigation.swift; sourceTree = "<group>"; };
 		8AF576227C3EB085F1299E12 /* LibraryOverview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryOverview.swift; sourceTree = "<group>"; };
+		8BFB3708C9076B87AD26400C /* PhotoPreviewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPreviewStore.swift; sourceTree = "<group>"; };
 		A088A9B04961F68343C80A01 /* OverviewScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewScreen.swift; sourceTree = "<group>"; };
 		A855A1239B6D14F3B74E0002 /* PhotoBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoBrowser.swift; sourceTree = "<group>"; };
 		BC6AF8FE6F9C7D8201C76780 /* PhotoCoverage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCoverage.swift; sourceTree = "<group>"; };
@@ -34,6 +40,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D74226444852013E87FEBC5D /* libsqlite3.tbd in Frameworks */,
+				7D28983DB74A97F8263A18A7 /* Photos.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,6 +52,7 @@
 			children = (
 				A088A9B04961F68343C80A01 /* OverviewScreen.swift */,
 				A855A1239B6D14F3B74E0002 /* PhotoBrowser.swift */,
+				8BFB3708C9076B87AD26400C /* PhotoPreviewStore.swift */,
 				28722282F1B2355C22E6990D /* PhotosAccessProbe.entitlements */,
 				18B4CD30593698B6CFFB537F /* PhotosAccessProbeApp.swift */,
 			);
@@ -66,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				012B39A2681545C2C092693B /* libsqlite3.tbd */,
+				6F9767554626D2467E4395BC /* Photos.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -76,6 +85,7 @@
 				8AF576227C3EB085F1299E12 /* LibraryOverview.swift */,
 				C6180619D4F1A38E801E3A3A /* LibraryProbe.swift */,
 				BC6AF8FE6F9C7D8201C76780 /* PhotoCoverage.swift */,
+				78D5D7467DEBD0E2C6811A3E /* ReferenceInvestigation.swift */,
 			);
 			name = LibraryProbe;
 			path = Sources/LibraryProbe;
@@ -153,7 +163,9 @@
 				13E63C2CA9691ABDA4481A70 /* OverviewScreen.swift in Sources */,
 				4A7B3BAC9DF7ABDDB502B5F8 /* PhotoBrowser.swift in Sources */,
 				2C798ABD376EF2BDF9F426A2 /* PhotoCoverage.swift in Sources */,
+				1D02FE63AD793BB7FCD8EF7D /* PhotoPreviewStore.swift in Sources */,
 				F2DC568D0D930C2F7EE7E14E /* PhotosAccessProbeApp.swift in Sources */,
+				F7CB23CCA04D70A109F684CD /* ReferenceInvestigation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -228,6 +240,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photos Statistics";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Show locally available thumbnails for matching photos in your System Photo Library. This version does not change your photos or albums.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -248,6 +261,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photos Statistics";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Show locally available thumbnails for matching photos in your System Photo Library. This version does not change your photos or albums.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

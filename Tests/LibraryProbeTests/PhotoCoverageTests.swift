@@ -137,4 +137,51 @@ final class PhotoCoverageTests: XCTestCase {
             XCTAssertFalse(String(decoding: try XCTUnwrap(result.overview).summaryJSON(), as: UTF8.self).contains("IMG_private_fixture"))
         }
     }
+
+    func testUniqueDirectOriginalFallbackDoesNotGuessAmbiguousOrDerivativeResources() throws {
+        try fixture { db, schema in
+            _ = try db.rows("ALTER TABLE ZINTERNALRESOURCE ADD COLUMN ZDATASTORESUBTYPE INTEGER")
+            _ = try db.rows("ALTER TABLE ZINTERNALRESOURCE ADD COLUMN ZRESOURCETYPE INTEGER")
+            _ = try db.rows("UPDATE ZADDITIONALASSETATTRIBUTES SET ZORIGINALSTABLEHASH=NULL WHERE ZASSET IN (1,2,3,4)")
+            _ = try db.rows("UPDATE ZADDITIONALASSETATTRIBUTES SET ZORIGINALSTABLEHASH='' WHERE ZASSET=1")
+            _ = try db.rows("UPDATE ZINTERNALRESOURCE SET ZDATASTORESUBTYPE=1,ZRESOURCETYPE=0 WHERE ZFINGERPRINT IN ('hash1','hash2','hash3','hash4')")
+            // A preview must not make the original ambiguous.
+            _ = try db.rows("UPDATE ZINTERNALRESOURCE SET ZDATASTORESUBTYPE=4,ZRESOURCETYPE=0 WHERE ZFINGERPRINT='preview'")
+            _ = try db.rows("INSERT INTO ZINTERNALRESOURCE VALUES (1,'',1,1,4,0)")
+            // Two original candidates must remain unresolved.
+            _ = try db.rows("INSERT INTO ZINTERNALRESOURCE VALUES (2,'another',1,1,1,0)")
+            var updated = schema
+            updated["ZINTERNALRESOURCE"]! += ["ZDATASTORESUBTYPE", "ZRESOURCETYPE"]
+            let result = try PhotoCoverage.inspect(db: db, schema: updated, library: URL(fileURLWithPath: "/unused"), checkPresence: { _, _ in .absent })
+            let photos = try XCTUnwrap(result.overview).photos
+            XCTAssertEqual(photos.first { $0.id == "1" }?.availability, .remote)
+            XCTAssertEqual(photos.first { $0.id == "2" }?.reason, .missingFingerprint)
+            XCTAssertEqual(photos.first { $0.id == "3" }?.reason, .unrecognizedState)
+            XCTAssertEqual(photos.first { $0.id == "4" }?.reason, .fileAbsentButReportedLocal)
+            XCTAssertTrue(photos.first { $0.id == "1" }?.evidence.contains("Unique directly linked original") == true)
+        }
+    }
+
+    func testSharedAlbumCategoryRequiresVerifiedCollectionShareEntity() throws {
+        try fixture { db, schema in
+            _ = try db.rows("ALTER TABLE ZASSET ADD COLUMN ZCOLLECTIONSHARE INTEGER")
+            _ = try db.rows("CREATE TABLE ZSHARE (Z_PK INTEGER PRIMARY KEY,Z_ENT INTEGER)")
+            _ = try db.rows("CREATE TABLE Z_PRIMARYKEY (Z_ENT INTEGER,Z_NAME TEXT)")
+            _ = try db.rows("INSERT INTO Z_PRIMARYKEY VALUES (11,'CollectionShare'),(12,'LibraryScope')")
+            _ = try db.rows("INSERT INTO ZSHARE VALUES (101,11),(102,12)")
+            _ = try db.rows("UPDATE ZASSET SET ZCOLLECTIONSHARE=101 WHERE Z_PK=1")
+            _ = try db.rows("UPDATE ZASSET SET ZCOLLECTIONSHARE=102 WHERE Z_PK=2")
+            _ = try db.rows("UPDATE ZADDITIONALASSETATTRIBUTES SET ZORIGINALSTABLEHASH=NULL WHERE ZASSET IN (1,2)")
+            var updated = schema
+            updated["ZASSET"]!.append("ZCOLLECTIONSHARE")
+            updated["ZSHARE"] = ["Z_PK", "Z_ENT"]
+            updated["Z_PRIMARYKEY"] = ["Z_ENT", "Z_NAME"]
+            let result = try PhotoCoverage.inspect(db: db, schema: updated, library: URL(fileURLWithPath: "/unused"), checkPresence: { _, _ in .absent })
+            let overview = try XCTUnwrap(result.overview)
+            XCTAssertEqual(overview.photos.first { $0.id == "1" }?.availability, .shared)
+            XCTAssertNil(overview.photos.first { $0.id == "1" }?.reason)
+            XCTAssertEqual(overview.photos.first { $0.id == "2" }?.reason, .missingFingerprint)
+            XCTAssertEqual(overview.count(.shared), 1)
+        }
+    }
 }
