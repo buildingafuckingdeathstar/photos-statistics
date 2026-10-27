@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.photoslibrary/
+*.sqlite*
+*.db*
+probe-report*.txt

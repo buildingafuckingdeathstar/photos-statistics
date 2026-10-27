@@ -1,0 +1,32 @@
+name: PhotosStatistics
+options:
+  bundleIdPrefix: com.photosstatistics
+  deploymentTarget:
+    macOS: '14.0'
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    CODE_SIGN_IDENTITY: '-'
+    CODE_SIGN_STYLE: Manual
+targets:
+  PhotosAccessProbe:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/PhotosAccessProbe
+      - Sources/LibraryProbe
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.photosstatistics.accessprobe
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Photos Access Probe
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.photography
+        ENABLE_APP_SANDBOX: YES
+        CODE_SIGN_ENTITLEMENTS: Sources/PhotosAccessProbe/PhotosAccessProbe.entitlements
+    dependencies:
+      - sdk: libsqlite3.tbd
+schemes:
+  PhotosAccessProbe:
+    build:
+      targets:
+        PhotosAccessProbe: all
