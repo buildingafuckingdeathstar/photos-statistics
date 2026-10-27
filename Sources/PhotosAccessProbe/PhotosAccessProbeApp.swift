@@ -2,112 +2,199 @@ import SwiftUI
 import AppKit
 
 @main
-struct PhotosAccessProbeApp: App {
+struct PhotosStatisticsApp: App {
+    @StateObject private var model = LibraryModel()
     var body: some Scene {
-        WindowGroup("Photos Access Probe") { ProbeView() }
-            .defaultSize(width: 850, height: 650)
+        WindowGroup("Photos Statistics") {
+            LibraryWindow(model: model).task { model.restoreLibrary() }
+        }.defaultSize(width: 1220, height: 800)
     }
 }
 
-struct ProbeView: View {
-    @State private var report = "Choose a Photos library to test read-only database access. This prototype checks access and inventories metadata columns; it does not yet calculate photographic statistics."
-    @State private var busy = false
-    @State private var failed = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Photos library access").font(.largeTitle.bold())
-            Text("Read-only access • Local processing • No original downloads")
-                .foregroundStyle(.secondary)
-            HStack {
-                Button("Choose Photos Library…", action: chooseLibrary).disabled(busy)
-                if busy { ProgressView().controlSize(.small) }
-                Spacer()
-                Button("Copy Report") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(report, forType: .string)
-                }.disabled(busy)
-            }
-            ScrollView {
-                Text(report).font(.system(.body, design: .monospaced))
-                    .foregroundStyle(failed ? Color.red : Color.primary)
-                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding().background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
-            Text("A successful check demonstrates technical access on this Mac. App Store review and metadata interpretation remain separate checks.")
-                .font(.callout).foregroundStyle(.secondary)
+enum LibrarySection: String, CaseIterable, Identifiable {
+    case overview, photos, review, diagnostics
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .overview: "Overview"
+        case .photos: "All photos"
+        case .review: "Availability review"
+        case .diagnostics: "Diagnostics"
         }
-        .padding(24).frame(minWidth: 650, minHeight: 450)
-        .task { restoreLibrary() }
     }
+    var icon: String {
+        switch self {
+        case .overview: "square.grid.2x2"
+        case .photos: "photo.on.rectangle"
+        case .review: "checklist"
+        case .diagnostics: "wrench.and.screwdriver"
+        }
+    }
+}
 
-    private func chooseLibrary() {
+@MainActor
+final class LibraryModel: ObservableObject {
+    @Published var overview: LibraryOverview?
+    @Published var report = "No library has been scanned yet."
+    @Published var busy = false
+    @Published var progress = ""
+    @Published var notice: String?
+    @Published var libraryName = "Your Photos library"
+    @Published var section: LibrarySection? = .overview
+    @Published var photoFilter: OriginalAvailability?
+    @Published var reviewReason: ReviewReason?
+    private var selectedURL: URL?
+    private var restored = false
+
+    func chooseLibrary() {
+        guard !busy else { return }
         let panel = NSOpenPanel()
         panel.title = "Choose your Photos library"
-        panel.message = "Select a .photoslibrary package, or a folder containing a Photos database. Access is read-only."
+        panel.message = "Your library will be opened read-only. No originals will be downloaded."
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.treatsFilePackagesAsDirectories = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            let bookmark = try url.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
-                                                includingResourceValuesForKeys: nil, relativeTo: nil)
+            let bookmark = try url.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess], includingResourceValuesForKeys: nil, relativeTo: nil)
             UserDefaults.standard.set(bookmark, forKey: "libraryBookmark")
-        } catch {
-            // A bookmark failure does not invalidate access from this file chooser session.
-            UserDefaults.standard.removeObject(forKey: "libraryBookmark")
-        }
-        inspect(url)
+        } catch { UserDefaults.standard.removeObject(forKey: "libraryBookmark") }
+        scan(url)
     }
 
-    private func restoreLibrary() {
+    func restoreLibrary() {
+        guard !restored else { return }
+        restored = true
         guard let data = UserDefaults.standard.data(forKey: "libraryBookmark") else { return }
         do {
             var stale = false
-            let url = try URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI],
-                              relativeTo: nil, bookmarkDataIsStale: &stale)
+            let url = try URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale)
             guard !stale else {
-                report = "Please choose your library again to renew its saved read-only access."
+                notice = "Choose your library again to renew its saved read-only access."
                 return
             }
-            inspect(url)
-        } catch {
-            report = "Saved library access could not be restored. Please choose your library again."
-        }
+            scan(url)
+        } catch { notice = "Saved library access could not be restored. Choose your library again." }
     }
 
-    private func inspect(_ url: URL) {
+    func refresh() { if let selectedURL, !busy { scan(selectedURL) } }
+    func showPhotos(_ status: OriginalAvailability) { photoFilter = status; section = .photos }
+    func showReview(_ reason: ReviewReason?) { reviewReason = reason; section = .review }
+
+    private func scan(_ url: URL) {
         busy = true
-        failed = false
-        report = "Checking access and creating a temporary database snapshot…"
+        notice = nil
+        overview = nil
+        selectedURL = url
+        libraryName = url.deletingPathExtension().lastPathComponent
+        progress = "Preparing your library…"
+        let progressModel = self
         Task {
             let result = await Task.detached(priority: .userInitiated) {
                 let scoped = url.startAccessingSecurityScopedResource()
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                return Result { try LibraryProbe.inspect(selection: url) }
+                return Result {
+                    try LibraryProbe.inspect(selection: url) { message in
+                        Task { @MainActor in progressModel.progress = message }
+                    }
+                }
             }.value
             switch result {
-            case .success(let value): report = value.text
+            case .success(let value):
+                overview = value.overview
+                report = value.text
+                if value.overview == nil { notice = "This version does not yet understand this library format. You can open Diagnostics for the scan report." }
             case .failure(let error):
-                failed = true
-                report = "Access check did not complete.\n\n\(error.localizedDescription)\n\nThe result is not evidence of missing photos or missing EXIF."
+                notice = "The library could not be read: \(error.localizedDescription)"
+                report = "Scan failed.\n\n\(error.localizedDescription)"
             }
-            // Store only the aggregate diagnostic report in this app's own container.
-            // No library snapshot, per-photo identifiers, paths or metadata values are retained.
-            do {
-                let folder = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                                        appropriateFor: nil, create: true)
-                    .appendingPathComponent("PhotosStatistics")
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                let header = "Generated: \(ISO8601DateFormatter().string(from: Date()))\nResult: \(failed ? "failed" : "success")\n\n"
-                try (header + report).write(to: folder.appendingPathComponent("last-probe-report.txt"),
-                                           atomically: true, encoding: .utf8)
-                report += "\n\nAggregate report saved in the app's Application Support folder."
-            } catch {
-                report += "\n\nCould not save the local report: \(error.localizedDescription)"
-            }
+            saveAggregateReport()
             busy = false
         }
+    }
+
+    private func saveAggregateReport() {
+        do {
+            let folder = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("PhotosStatistics")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let header = "Generated: \(ISO8601DateFormatter().string(from: Date()))\nResult: \(overview == nil ? "incomplete" : "success")\n\n"
+            try (header + report).write(to: folder.appendingPathComponent("last-probe-report.txt"), atomically: true, encoding: .utf8)
+            let summary = folder.appendingPathComponent("last-overview-summary.json")
+            if let overview { try overview.summaryJSON().write(to: summary, options: .atomic) }
+            else if FileManager.default.fileExists(atPath: summary.path) { try FileManager.default.removeItem(at: summary) }
+        } catch { notice = "The scan result is available in this window, but its local diagnostic report could not be saved." }
+    }
+}
+
+struct LibraryWindow: View {
+    @ObservedObject var model: LibraryModel
+    var body: some View {
+        NavigationSplitView {
+            List(selection: $model.section) {
+                Section("Library") {
+                    ForEach([LibrarySection.overview, .photos, .review]) { section in
+                        Label(section.title, systemImage: section.icon).tag(section)
+                    }
+                }
+                Section("Tools") { Label("Diagnostics", systemImage: "wrench.and.screwdriver").tag(LibrarySection.diagnostics) }
+            }
+            .navigationTitle("Photos Statistics")
+            .navigationSplitViewColumnWidth(min: 200, ideal: 225)
+            .safeAreaInset(edge: .bottom) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Label("Read-only library access", systemImage: "lock.shield")
+                    Text("Your photos stay on your Mac and in iCloud.").foregroundStyle(.secondary)
+                }.font(.caption).padding().frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } detail: {
+            VStack(spacing: 0) {
+                if let notice = model.notice {
+                    Label(notice, systemImage: "info.circle").font(.callout).padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading).background(.orange.opacity(0.1))
+                }
+                if model.busy {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                        Text("Reading your library").font(.title2.bold())
+                        Text(model.progress).foregroundStyle(.secondary)
+                        Text("Metadata and file attributes only. No image downloads.").font(.caption).foregroundStyle(.secondary)
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if model.section == .diagnostics {
+                    ScrollView {
+                        Text(model.report).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(24)
+                    }
+                } else if let overview = model.overview {
+                    switch model.section ?? .overview {
+                    case .overview: OverviewScreen(model: model, overview: overview)
+                    case .photos: PhotoBrowser(overview: overview, status: $model.photoFilter, reason: nil)
+                    case .review: ReviewScreen(model: model, overview: overview)
+                    case .diagnostics: EmptyView()
+                    }
+                } else {
+                    ContentUnavailableView {
+                        Label("Get to know your photo library", systemImage: "photo.stack")
+                    } description: {
+                        Text("Load your library for an overview and a closer look at original availability. This first version makes no changes to Photos.")
+                    } actions: {
+                        Button("Choose Photos Library…", action: model.chooseLibrary).buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            .navigationTitle(model.section?.title ?? "Overview").navigationSubtitle(model.libraryName)
+            .toolbar {
+                ToolbarItemGroup {
+                    if model.section == .diagnostics {
+                        Button("Copy report", systemImage: "doc.on.doc") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(model.report, forType: .string)
+                        }
+                    }
+                    Button("Refresh", systemImage: "arrow.clockwise", action: model.refresh).disabled(model.busy || model.overview == nil)
+                    Button("Choose library", systemImage: "folder", action: model.chooseLibrary).disabled(model.busy)
+                }
+            }
+        }.frame(minWidth: 1050, minHeight: 650)
     }
 }

@@ -33,4 +33,12 @@ Each bucket reports its own numerator, denominator and percentage. Empty buckets
 
 The relationship and fingerprint approach is informed by the primary [OSXPhotos EXIF reader](https://github.com/RhetTbull/osxphotos/blob/main/osxphotos/photosdb/_photosdb_process_exif.py), [resource-availability reader](https://github.com/RhetTbull/osxphotos/blob/main/osxphotos/photosdb/photosdb.py), and [version-specific field mappings](https://github.com/RhetTbull/osxphotos/blob/main/osxphotos/_constants.py). The [original path implementation](https://github.com/RhetTbull/osxphotos/blob/main/osxphotos/photoinfo.py) also documents alternative storage layouts that this initial managed-path check leaves unknown.
 
-Apple's database is undocumented. Runtime relationship checks and conservative unknowns limit misclassification but do not establish production compatibility. The next validation is a real-library run of the updated signed app; until that run, no measured off-disk metadata coverage is claimed.
+Apple's database is undocumented. Runtime relationship checks and conservative unknowns limit misclassification but do not establish production compatibility. Real-library scans have now validated per-photo metadata coverage and restored read-only bookmark access on the tested Mac. Aggregate results remain local rather than being committed to this repository.
+
+## Availability review
+
+The overview and review browser use the same structured photo records as the coverage report. Each uncertain photo gets one primary reason. Path/access problems take precedence, followed by an absent original reference, unmatched resources, incomplete or conflicting availability, unrecognized states, file/database disagreement, and unconfirmed remote availability. This precedence makes totals mutually exclusive; it does not mean a photo has only one possible underlying issue.
+
+The reference test is based on the selected original fingerprint column. A missing reference does not imply the original was deleted. Alternate paths, legacy fingerprints and resource relationships are future investigation areas, not grounds for changing Photos' database.
+
+The browser keeps names, dates, camera models and evidence in process memory. It does not persist a per-photo index yet. Only counts and reason totals are saved for diagnostics. Image thumbnails, trip grouping and any PhotoKit edits are separate later milestones.

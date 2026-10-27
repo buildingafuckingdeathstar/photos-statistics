@@ -7,7 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		13E63C2CA9691ABDA4481A70 /* OverviewScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A088A9B04961F68343C80A01 /* OverviewScreen.swift */; };
 		2C798ABD376EF2BDF9F426A2 /* PhotoCoverage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC6AF8FE6F9C7D8201C76780 /* PhotoCoverage.swift */; };
+		4A7B3BAC9DF7ABDDB502B5F8 /* PhotoBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A855A1239B6D14F3B74E0002 /* PhotoBrowser.swift */; };
+		B88F0F661B04D109140C2D56 /* LibraryOverview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF576227C3EB085F1299E12 /* LibraryOverview.swift */; };
 		C9C449BD165C97F13B422283 /* LibraryProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6180619D4F1A38E801E3A3A /* LibraryProbe.swift */; };
 		D74226444852013E87FEBC5D /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 012B39A2681545C2C092693B /* libsqlite3.tbd */; };
 		F2DC568D0D930C2F7EE7E14E /* PhotosAccessProbeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B4CD30593698B6CFFB537F /* PhotosAccessProbeApp.swift */; };
@@ -17,6 +20,9 @@
 		012B39A2681545C2C092693B /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		18B4CD30593698B6CFFB537F /* PhotosAccessProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosAccessProbeApp.swift; sourceTree = "<group>"; };
 		28722282F1B2355C22E6990D /* PhotosAccessProbe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PhotosAccessProbe.entitlements; sourceTree = "<group>"; };
+		8AF576227C3EB085F1299E12 /* LibraryOverview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryOverview.swift; sourceTree = "<group>"; };
+		A088A9B04961F68343C80A01 /* OverviewScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewScreen.swift; sourceTree = "<group>"; };
+		A855A1239B6D14F3B74E0002 /* PhotoBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoBrowser.swift; sourceTree = "<group>"; };
 		BC6AF8FE6F9C7D8201C76780 /* PhotoCoverage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCoverage.swift; sourceTree = "<group>"; };
 		C454AB613A45BDAB91DF1325 /* PhotosAccessProbe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotosAccessProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6180619D4F1A38E801E3A3A /* LibraryProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryProbe.swift; sourceTree = "<group>"; };
@@ -37,6 +43,8 @@
 		41DF8EBBECE7C9715A5550BB /* PhotosAccessProbe */ = {
 			isa = PBXGroup;
 			children = (
+				A088A9B04961F68343C80A01 /* OverviewScreen.swift */,
+				A855A1239B6D14F3B74E0002 /* PhotoBrowser.swift */,
 				28722282F1B2355C22E6990D /* PhotosAccessProbe.entitlements */,
 				18B4CD30593698B6CFFB537F /* PhotosAccessProbeApp.swift */,
 			);
@@ -65,6 +73,7 @@
 		DD4441CCF81FF5B707F46455 /* LibraryProbe */ = {
 			isa = PBXGroup;
 			children = (
+				8AF576227C3EB085F1299E12 /* LibraryOverview.swift */,
 				C6180619D4F1A38E801E3A3A /* LibraryProbe.swift */,
 				BC6AF8FE6F9C7D8201C76780 /* PhotoCoverage.swift */,
 			);
@@ -139,7 +148,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B88F0F661B04D109140C2D56 /* LibraryOverview.swift in Sources */,
 				C9C449BD165C97F13B422283 /* LibraryProbe.swift in Sources */,
+				13E63C2CA9691ABDA4481A70 /* OverviewScreen.swift in Sources */,
+				4A7B3BAC9DF7ABDDB502B5F8 /* PhotoBrowser.swift in Sources */,
 				2C798ABD376EF2BDF9F426A2 /* PhotoCoverage.swift in Sources */,
 				F2DC568D0D930C2F7EE7E14E /* PhotosAccessProbeApp.swift in Sources */,
 			);
@@ -214,13 +226,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Photos Access Probe";
+				INFOPLIST_KEY_CFBundleDisplayName = "Photos Statistics";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.photosstatistics.accessprobe;
+				PRODUCT_NAME = "Photos Statistics";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -233,13 +246,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Photos Access Probe";
+				INFOPLIST_KEY_CFBundleDisplayName = "Photos Statistics";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.photosstatistics.accessprobe;
+				PRODUCT_NAME = "Photos Statistics";
 				SDKROOT = macosx;
 			};
 			name = Debug;

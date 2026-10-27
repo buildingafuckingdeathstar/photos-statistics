@@ -18,8 +18,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.photosstatistics.accessprobe
+        PRODUCT_NAME: Photos Statistics
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Photos Access Probe
+        INFOPLIST_KEY_CFBundleDisplayName: Photos Statistics
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.photography
         ENABLE_APP_SANDBOX: YES
         CODE_SIGN_ENTITLEMENTS: Sources/PhotosAccessProbe/PhotosAccessProbe.entitlements

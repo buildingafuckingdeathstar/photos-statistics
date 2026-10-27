@@ -73,6 +73,7 @@ final class Database {
 public struct ProbeReport: Sendable {
     public let text: String
     public let fingerprint: String
+    public let overview: LibraryOverview?
 }
 
 public enum LibraryProbe {
@@ -89,7 +90,8 @@ public enum LibraryProbe {
         throw ProbeFailure(message: "No Photos database was found or accessible. Select the .photoslibrary package or its database folder. macOS may separately restrict access to Photos data; this probe will not bypass that restriction.")
     }
 
-    public static func inspect(selection: URL) throws -> ProbeReport {
+    public static func inspect(selection: URL, progress: @Sendable (String) -> Void = { _ in }) throws -> ProbeReport {
+        progress("Opening a read-only database snapshot…")
         let databaseURL = try databaseURL(in: selection)
         let source = try Database(path: databaseURL.path, readOnly: true)
         // SQLite backup includes committed WAL transactions; copying just Photos.sqlite can lose them.
@@ -98,6 +100,7 @@ public enum LibraryProbe {
         defer { try? FileManager.default.removeItem(at: temporary) }
         let snapshot = try Database(path: temporary.appendingPathComponent("snapshot.sqlite").path, readOnly: false)
         try source.snapshot(to: snapshot)
+        progress("Checking the snapshot and library schema…")
         guard try snapshot.rows("PRAGMA quick_check").first?.first == "ok" else {
             throw ProbeFailure(message: "The database snapshot failed its consistency check.")
         }
@@ -113,7 +116,7 @@ public enum LibraryProbe {
         let userVersion = try snapshot.rows("PRAGMA user_version").first?.first ?? nil
         var lines = [
             "Photos database access probe",
-            "Probe revision: per-photo-coverage-v1",
+            "Probe revision: library-overview-v1",
             "System: \(ProcessInfo.processInfo.operatingSystemVersionString)",
             "Source opened read-only: yes",
             "Consistent snapshot and quick_check: passed",
@@ -146,17 +149,20 @@ public enum LibraryProbe {
                 } else { lines.append("  \(field): column not found") }
             }
         }
+        var overview: LibraryOverview?
         if fingerprint == PhotoCoverage.observedFingerprint {
             let library = databaseURL.deletingLastPathComponent().lastPathComponent == "database"
                 ? databaseURL.deletingLastPathComponent().deletingLastPathComponent() : selection
-            lines += try PhotoCoverage.analyze(db: snapshot, schema: schema, library: library)
+            let coverage = try PhotoCoverage.inspect(db: snapshot, schema: schema, library: library, progress: progress)
+            lines += coverage.lines
+            overview = coverage.overview
         } else {
             lines += ["", "Per-photo analysis skipped: unrecognized schema fingerprint."]
         }
         lines += ["", "No image files were opened. No network requests were made.",
                   "Temporary snapshot is removed after inspection.",
                   "Technical access does not establish Mac App Store acceptance."]
-        return ProbeReport(text: lines.joined(separator: "\n"), fingerprint: fingerprint)
+        return ProbeReport(text: lines.joined(separator: "\n"), fingerprint: fingerprint, overview: overview)
     }
 
     static func quote(_ identifier: String) -> String {

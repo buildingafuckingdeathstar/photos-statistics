@@ -71,7 +71,70 @@ final class PhotoCoverageTests: XCTestCase {
         try Data([1]).write(to: directory.appendingPathComponent("fixture.jpg"))
         XCTAssertEqual(PhotoCoverage.presence(library: root, directory: "A", filename: "fixture.jpg"), .present)
         XCTAssertEqual(PhotoCoverage.presence(library: root, directory: "A", filename: "missing.jpg"), .absent)
-        XCTAssertEqual(PhotoCoverage.presence(library: root, directory: "../outside", filename: "fixture.jpg"), .unknown)
-        XCTAssertEqual(PhotoCoverage.presence(library: root, directory: "/external", filename: "fixture.jpg"), .unknown)
+        XCTAssertEqual(PhotoCoverage.presence(library: root, directory: "../outside", filename: "fixture.jpg"), .unsupportedPath)
+        XCTAssertEqual(PhotoCoverage.presence(library: root, directory: "/external", filename: "fixture.jpg"), .unsupportedPath)
+    }
+
+    func testStructuredOverviewAccountsForEveryPhotoAndKeepsSummaryAggregateOnly() throws {
+        try fixture { db, schema in
+            let result = try PhotoCoverage.inspect(db: db, schema: schema, library: URL(fileURLWithPath: "/unused")) { _, name in
+                name == "2.jpg" ? .present : .absent
+            }
+            let overview = try XCTUnwrap(result.overview)
+            XCTAssertEqual(overview.photos.count, 5)
+            XCTAssertEqual(overview.videoCount, 1)
+            XCTAssertEqual(Set(overview.photos.map(\.id)).count, 5)
+            XCTAssertEqual(overview.photos.first { $0.id == "1" }?.camera, "Phone")
+            XCTAssertEqual(overview.photos.first { $0.id == "3" }?.reason, .unrecognizedState)
+            XCTAssertEqual(overview.photos.first { $0.id == "4" }?.reason, .fileAbsentButReportedLocal)
+            XCTAssertEqual(overview.photos.first { $0.id == "5" }?.reason, .remoteNotConfirmed)
+            XCTAssertEqual(ReviewReason.allCases.reduce(0) { $0 + overview.count($1) }, overview.count(.review))
+            XCTAssertEqual(OriginalAvailability.allCases.reduce(0) { $0 + overview.count($1) }, 5)
+            let json = String(decoding: try overview.summaryJSON(), as: UTF8.self)
+            XCTAssertFalse(json.contains("1.jpg"))
+            XCTAssertFalse(json.contains("Phone"))
+            XCTAssertTrue(json.contains("reviewReasons"))
+        }
+    }
+
+    func testDiagnosticReasonsSeparateMissingRelationshipsAndFileAccess() {
+        func reason(_ presence: PhotoCoverage.Presence = .absent, hash: String? = "hash", count: String? = "1",
+                    localCount: String? = "1", low: String? = "-1", high: String? = "-1",
+                    remoteCount: String? = "1", remoteLow: String? = "1", remoteHigh: String? = "1") -> ReviewReason? {
+            PhotoCoverage.classify(presence: presence, fingerprint: hash, resourceCount: count,
+                                   localCount: localCount, localMin: low, localMax: high,
+                                   remoteCount: remoteCount, remoteMin: remoteLow, remoteMax: remoteHigh).1
+        }
+        XCTAssertEqual(reason(.unsupportedPath), .unsupportedPath)
+        XCTAssertEqual(reason(.inaccessible), .inaccessibleFile)
+        XCTAssertEqual(reason(hash: nil), .missingFingerprint)
+        XCTAssertEqual(reason(count: nil), .noMatchingResource)
+        XCTAssertEqual(reason(localCount: "0", low: nil, high: nil), .incompleteAvailability)
+        XCTAssertEqual(reason(low: "-1", high: "1"), .conflictingResources)
+        XCTAssertEqual(reason(low: "0", high: "0"), .unrecognizedState)
+        XCTAssertEqual(reason(low: "1", high: "1"), .fileAbsentButReportedLocal)
+        XCTAssertEqual(reason(.present), .filePresentButReportedAbsent)
+        XCTAssertEqual(reason(remoteCount: "0"), .incompleteAvailability)
+        XCTAssertEqual(reason(remoteLow: "-1", remoteHigh: "1"), .conflictingResources)
+        XCTAssertEqual(reason(remoteLow: "-1", remoteHigh: "-1"), .remoteNotConfirmed)
+        XCTAssertNil(reason())
+    }
+
+    func testOriginalDisplayNameDoesNotChangeManagedFileLookup() throws {
+        try fixture { db, schema in
+            _ = try db.rows("ALTER TABLE ZADDITIONALASSETATTRIBUTES ADD COLUMN ZORIGINALFILENAME TEXT")
+            _ = try db.rows("UPDATE ZADDITIONALASSETATTRIBUTES SET ZORIGINALFILENAME='IMG_private_fixture.HEIC' WHERE ZASSET=1")
+            var updatedSchema = schema
+            updatedSchema["ZADDITIONALASSETATTRIBUTES"]?.append("ZORIGINALFILENAME")
+            let result = try PhotoCoverage.inspect(db: db, schema: updatedSchema, library: URL(fileURLWithPath: "/unused")) { _, name in
+                XCTAssertFalse(name == "IMG_private_fixture.HEIC", "Presence checks must use the managed filename")
+                return .absent
+            }
+            let photo = try XCTUnwrap(result.overview?.photos.first { $0.id == "1" })
+            XCTAssertEqual(photo.filename, "IMG_private_fixture.HEIC")
+            XCTAssertEqual(photo.availability, .remote)
+            XCTAssertEqual(photo.captureDate, Date(timeIntervalSinceReferenceDate: 123))
+            XCTAssertFalse(String(decoding: try XCTUnwrap(result.overview).summaryJSON(), as: UTF8.self).contains("IMG_private_fixture"))
+        }
     }
 }
