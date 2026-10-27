@@ -38,6 +38,7 @@ struct ProbeView: View {
                 .font(.callout).foregroundStyle(.secondary)
         }
         .padding(24).frame(minWidth: 650, minHeight: 450)
+        .task { restoreLibrary() }
     }
 
     private func chooseLibrary() {
@@ -49,6 +50,34 @@ struct ProbeView: View {
         panel.allowsMultipleSelection = false
         panel.treatsFilePackagesAsDirectories = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let bookmark = try url.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                                                includingResourceValuesForKeys: nil, relativeTo: nil)
+            UserDefaults.standard.set(bookmark, forKey: "libraryBookmark")
+        } catch {
+            // A bookmark failure does not invalidate access from this file chooser session.
+            UserDefaults.standard.removeObject(forKey: "libraryBookmark")
+        }
+        inspect(url)
+    }
+
+    private func restoreLibrary() {
+        guard let data = UserDefaults.standard.data(forKey: "libraryBookmark") else { return }
+        do {
+            var stale = false
+            let url = try URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI],
+                              relativeTo: nil, bookmarkDataIsStale: &stale)
+            guard !stale else {
+                report = "Please choose your library again to renew its saved read-only access."
+                return
+            }
+            inspect(url)
+        } catch {
+            report = "Saved library access could not be restored. Please choose your library again."
+        }
+    }
+
+    private func inspect(_ url: URL) {
         busy = true
         failed = false
         report = "Checking access and creating a temporary database snapshot…"
@@ -63,6 +92,20 @@ struct ProbeView: View {
             case .failure(let error):
                 failed = true
                 report = "Access check did not complete.\n\n\(error.localizedDescription)\n\nThe result is not evidence of missing photos or missing EXIF."
+            }
+            // Store only the aggregate diagnostic report in this app's own container.
+            // No library snapshot, per-photo identifiers, paths or metadata values are retained.
+            do {
+                let folder = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                                        appropriateFor: nil, create: true)
+                    .appendingPathComponent("PhotosStatistics")
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let header = "Generated: \(ISO8601DateFormatter().string(from: Date()))\nResult: \(failed ? "failed" : "success")\n\n"
+                try (header + report).write(to: folder.appendingPathComponent("last-probe-report.txt"),
+                                           atomically: true, encoding: .utf8)
+                report += "\n\nAggregate report saved in the app's Application Support folder."
+            } catch {
+                report += "\n\nCould not save the local report: \(error.localizedDescription)"
             }
             busy = false
         }

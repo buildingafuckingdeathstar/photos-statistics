@@ -113,6 +113,7 @@ public enum LibraryProbe {
         let userVersion = try snapshot.rows("PRAGMA user_version").first?.first ?? nil
         var lines = [
             "Photos database access probe",
+            "Probe revision: per-photo-coverage-v1",
             "System: \(ProcessInfo.processInfo.operatingSystemVersionString)",
             "Source opened read-only: yes",
             "Consistent snapshot and quick_check: passed",
@@ -121,8 +122,8 @@ public enum LibraryProbe {
             "Schema fingerprint: \(fingerprint)",
             "Tables: \(tableNames.count)",
             "",
-            "Compatibility: schema inventory only; no production Photos adapter has been approved yet.",
-            "These are database record counts, not photo counts or per-photo coverage.",
+            "Compatibility: experimental probe; no production Photos adapter has been approved yet.",
+            "Inventory counts below describe database records. Per-photo coverage follows for recognized schemas.",
             "Missing columns do not prove metadata is absent from the original image.",
             ""
         ]
@@ -144,6 +145,13 @@ public enum LibraryProbe {
                     lines.append("  \(field): \(counts[index + 1] ?? "unknown") non-NULL values")
                 } else { lines.append("  \(field): column not found") }
             }
+        }
+        if fingerprint == PhotoCoverage.observedFingerprint {
+            let library = databaseURL.deletingLastPathComponent().lastPathComponent == "database"
+                ? databaseURL.deletingLastPathComponent().deletingLastPathComponent() : selection
+            lines += try PhotoCoverage.analyze(db: snapshot, schema: schema, library: library)
+        } else {
+            lines += ["", "Per-photo analysis skipped: unrecognized schema fingerprint."]
         }
         lines += ["", "No image files were opened. No network requests were made.",
                   "Temporary snapshot is removed after inspection.",

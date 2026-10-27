@@ -24,7 +24,9 @@ Requires Xcode with the macOS 14 or newer SDK. Open `PhotosStatistics.xcodeproj`
 2. Select your `.photoslibrary` package. A folder containing `Photos.sqlite` is also accepted for development fixtures.
 3. Review the access, snapshot and metadata-column report. **Copy Report** copies the diagnostic summary only when clicked.
 
-The app requests App Sandbox plus user-selected **read-only** file access. It has no network entitlement, requests no image data, and does not use PhotoKit to download originals. Library access is granted afresh each run; persistent bookmarks come later.
+The app requests App Sandbox plus user-selected **read-only** file access. It has no network entitlement, requests no image data, and does not use PhotoKit to download originals. A read-only security-scoped bookmark remembers your selection. On launch, the app restores that access without displaying a chooser and refreshes the report. If access is stale, choose the library again.
+
+The latest aggregate diagnostic report is written locally to `PhotosStatistics/last-probe-report.txt` under the app's Application Support folder. No database snapshot, per-photo identifiers, or metadata values are saved there. The bookmark is stored separately in the app's preferences. These local files are not uploaded. Relaunch the app after rebuilding to use new probe logic.
 
 It opens the source using SQLite's read-only mode, creates a consistent temporary snapshot with the SQLite backup API, checks it, and inspects only that snapshot. The temporary copy is deleted at the end of the check. SQLite may need existing WAL/shared-memory sidecars to read a live database with read-only filesystem access; failures are reported without escalating permissions or using `immutable` to ignore journal changes.
 
@@ -42,11 +44,13 @@ Tests use synthetic databases and exercise committed WAL data, rejection of sour
 
 Initial real-library CLI attempt (27 October 2026): SQLite returned error 23, `authorization denied`, both within and outside Codex's restricted execution environment. This does not establish which macOS privacy permission is missing. No real metadata counts were obtained, no privacy settings were changed, and real-library metadata feasibility remains unverified on this Mac. Synthetic database tests and CLI checks passed.
 
+Subsequent graphical check (27 October 2026): selecting the library through the signed sandboxed app succeeded. The snapshot passed `quick_check` and contained camera/lens/exposure metadata columns. This validates technical package access on the tested Mac. The first report counted table rows rather than photo coverage. The new experimental adapter adds per-photo coverage; its real-library results still require running the upgraded probe.
+
 `project.yml` is the XcodeGen source for the checked-in Xcode project. Regenerate with `xcodegen generate` after changing project configuration.
 
 ## Compatibility approach
 
-The probe inventories unknown schemas without interpreting them. No production schema adapter is approved yet. The importer will eventually use an explicit compatibility registry, original/current metadata distinctions, and per-field missing-data coverage. A schema fingerprint is a structural signal, not a substitute for interpreting Apple's model versions or validating each supported Photos release.
+The probe inventories unknown schemas without interpreting them. One observed schema fingerprint now enables an experimental per-photo adapter with structural and relationship checks; no production adapter is approved yet. See [mapping and coverage definitions](docs/metadata-coverage.md). A schema fingerprint is a structural signal, not a substitute for interpreting Apple's model versions or validating each supported Photos release.
 
 Successful access demonstrates technical feasibility on the tested system; App Store review remains separate. No original image downloads or cloud integration are required for this milestone.
 
