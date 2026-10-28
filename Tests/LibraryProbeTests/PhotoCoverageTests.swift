@@ -162,14 +162,14 @@ final class PhotoCoverageTests: XCTestCase {
         }
     }
 
-    func testSharedAlbumCategoryRequiresVerifiedCollectionShareEntity() throws {
+    func testSharedAlbumsExcludedFromMainLibraryButLibraryScopeRetained() throws {
         try fixture { db, schema in
             _ = try db.rows("ALTER TABLE ZASSET ADD COLUMN ZCOLLECTIONSHARE INTEGER")
             _ = try db.rows("CREATE TABLE ZSHARE (Z_PK INTEGER PRIMARY KEY,Z_ENT INTEGER)")
             _ = try db.rows("CREATE TABLE Z_PRIMARYKEY (Z_ENT INTEGER,Z_NAME TEXT)")
             _ = try db.rows("INSERT INTO Z_PRIMARYKEY VALUES (11,'CollectionShare'),(12,'LibraryScope')")
             _ = try db.rows("INSERT INTO ZSHARE VALUES (101,11),(102,12)")
-            _ = try db.rows("UPDATE ZASSET SET ZCOLLECTIONSHARE=101 WHERE Z_PK=1")
+            _ = try db.rows("UPDATE ZASSET SET ZCOLLECTIONSHARE=101 WHERE Z_PK IN (1,6)")
             _ = try db.rows("UPDATE ZASSET SET ZCOLLECTIONSHARE=102 WHERE Z_PK=2")
             _ = try db.rows("UPDATE ZADDITIONALASSETATTRIBUTES SET ZORIGINALSTABLEHASH=NULL WHERE ZASSET IN (1,2)")
             var updated = schema
@@ -178,10 +178,16 @@ final class PhotoCoverageTests: XCTestCase {
             updated["Z_PRIMARYKEY"] = ["Z_ENT", "Z_NAME"]
             let result = try PhotoCoverage.inspect(db: db, schema: updated, library: URL(fileURLWithPath: "/unused"), checkPresence: { _, _ in .absent })
             let overview = try XCTUnwrap(result.overview)
-            XCTAssertEqual(overview.photos.first { $0.id == "1" }?.availability, .shared)
-            XCTAssertNil(overview.photos.first { $0.id == "1" }?.reason)
+            XCTAssertNil(overview.photos.first { $0.id == "1" })
+            XCTAssertEqual(overview.photos.count, 4)
+            XCTAssertEqual(overview.excludedSharedPhotoCount, 1)
+            XCTAssertEqual(overview.excludedSharedVideoCount, 1)
+            XCTAssertEqual(overview.videoCount, 0)
             XCTAssertEqual(overview.photos.first { $0.id == "2" }?.reason, .missingFingerprint)
-            XCTAssertEqual(overview.count(.shared), 1)
+            XCTAssertEqual(overview.count(.shared), 0)
+            let summary = try XCTUnwrap(JSONSerialization.jsonObject(with: overview.summaryJSON()) as? [String: Any])
+            XCTAssertEqual(summary["photos"] as? Int, 4)
+            XCTAssertEqual(summary["excludedSharedPhotoCount"] as? Int, 1)
         }
     }
 }

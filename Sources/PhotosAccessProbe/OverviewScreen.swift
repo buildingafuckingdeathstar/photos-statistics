@@ -7,7 +7,7 @@ struct OverviewScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Your library, at a glance").font(.largeTitle.bold())
+                    Text("Your main library, at a glance").font(.largeTitle.bold())
                     Text("Scanned \(overview.scanDate.formatted(date: .abbreviated, time: .shortened))").foregroundStyle(.secondary)
                 }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
@@ -20,8 +20,8 @@ struct OverviewScreen: View {
                 }
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Library storage").font(.title2.bold())
-                    Text("Managed originals and Shared Album copies are shown separately. A local preview does not count as an original.").font(.callout).foregroundStyle(.secondary)
-                    ForEach(OriginalAvailability.allCases, id: \.self) { status in
+                    Text("Main-library originals only. A local preview does not count as an original.").font(.callout).foregroundStyle(.secondary)
+                    ForEach(OriginalAvailability.allCases.filter { $0 != .shared }, id: \.self) { status in
                         Button {
                             if status == .review { model.showReview(nil) } else { model.showPhotos(status) }
                         } label: {
@@ -53,7 +53,7 @@ struct OverviewScreen: View {
                         Divider()
                     }
                 }
-                Text("Photo counts include Shared Album copies, hidden photos and burst members; they are not unique-image counts. Videos are counted separately. No library changes have been made.").font(.caption).foregroundStyle(.secondary)
+                Text("Shared Albums excluded: \(overview.excludedSharedPhotoCount.formatted()) photos and \(overview.excludedSharedVideoCount.formatted()) videos. Main-library counts include hidden photos and burst members. A photo saved into the main library still counts there. No library changes have been made.").font(.caption).foregroundStyle(.secondary)
             }.padding(28)
         }
     }

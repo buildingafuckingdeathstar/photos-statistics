@@ -223,9 +223,14 @@ enum PhotoCoverage {
                 output.append("  \(metrics[index].label): \(count)/\(totals[bucket]) (\(percentage))")
             }
         }
-        let videoCount = try db.rows("SELECT COUNT(*) FROM ZASSET WHERE ZKIND=1 AND ZTRASHEDSTATE=0").first?.first.flatMap { $0 }.flatMap(Int.init) ?? 0
+        let videoCounts = try db.rows("SELECT COUNT(*), COALESCE(SUM(CASE WHEN \(sharedSQL) THEN 1 ELSE 0 END),0) FROM ZASSET a WHERE a.ZKIND=1 AND a.ZTRASHEDSTATE=0").first ?? []
+        let allVideos = videoCounts.first.flatMap { $0 }.flatMap(Int.init) ?? 0
+        let sharedVideos = videoCounts.count > 1 ? (videoCounts[1].flatMap(Int.init) ?? 0) : 0
+        let sharedPhotos = photos.filter { $0.availability == .shared }.count
+        // Apply scope once so every statistic, browser and preview uses the main library.
+        photos.removeAll { $0.availability == .shared }
         photos.sort { ($0.captureDate ?? .distantPast) > ($1.captureDate ?? .distantPast) }
-        let overview = LibraryOverview(photos: photos, videoCount: videoCount, scanDate: Date(), fingerprint: observedFingerprint)
+        let overview = LibraryOverview(photos: photos, excludedSharedPhotoCount: sharedPhotos, excludedSharedVideoCount: sharedVideos, videoCount: allVideos - sharedVideos, scanDate: Date(), fingerprint: observedFingerprint)
         output += ["", "REVIEW REASONS (mutually exclusive; not a damage diagnosis)"]
         for reason in ReviewReason.allCases { output.append("  \(reason.title): \(overview.count(reason))") }
         output += try ReferenceInvestigation.report(db: db, schema: schema, hashColumn: hashColumn)

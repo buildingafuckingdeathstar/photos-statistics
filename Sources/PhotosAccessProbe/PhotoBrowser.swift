@@ -46,7 +46,7 @@ struct PhotoBrowser: View {
                 if allowsStatusFilter {
                     Picker("Availability", selection: $status) {
                         Text("All originals").tag(OriginalAvailability?.none)
-                        ForEach(OriginalAvailability.allCases, id: \.self) { Text($0.title).tag(Optional($0)) }
+                        ForEach(OriginalAvailability.allCases.filter { $0 != .shared }, id: \.self) { Text($0.title).tag(Optional($0)) }
                     }.labelsHidden().frame(maxWidth: 280)
                 }
             }

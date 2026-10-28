@@ -17,7 +17,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .overview: "Overview"
-        case .photos: "All photos"
+        case .photos: "Main library photos"
         case .review: "Availability review"
         case .diagnostics: "Diagnostics"
         }

@@ -1,5 +1,7 @@
 # Photos and List views
 
+Shared Album copies are excluded from the main-library dataset, including totals, dates, location counts, browsing and previews. Diagnostics retain separate aggregate counts for troubleshooting. Copies saved into the main library remain included.
+
 The first tab is **Photos**, a lazy adaptive grid of all filtered photo records in newest-first order. Its size slider changes tile size without requesting full-resolution images. The second tab is **List**, the existing table with incremental row display. Search, category filters and the selected photo are shared between tabs. The detail panel shows the same local preview and metadata evidence.
 
 ## Permission and source

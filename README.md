@@ -12,7 +12,7 @@ The first app milestone is a read-only library overview and availability review.
 - Break uncertain availability into specific, mutually exclusive reasons.
 - Search photos by original filename or camera, and inspect the evidence for a selected record.
 - Switch between **Photos** (a lazy, scrollable thumbnail grid) and **List**, with shared filters and selection.
-- Recognize Shared Album copies separately from managed originals.
+- Exclude Shared Album copies from main-library statistics, browsing, previews and review. The overview reports excluded photo and video counts; copies saved into the main library remain included.
 - Refresh a consistent database snapshot without downloading originals.
 
 Local thumbnails are optional and require a separate Photos permission. The first tab is **Photos**; **List** retains the detailed table. The grid scrolls through all filtered records, requests previews only for visible cells, and has a photo-size slider. It does not download images to fill gaps; unavailable or unmatched previews show placeholders. There are no PhotoKit change requests: locations, albums, original files and database records are not modified by this app.

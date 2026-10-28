@@ -86,6 +86,8 @@ public enum PreviewIdentity {
 
 public struct LibraryOverview: Sendable {
     public let photos: [PhotoRecord]
+    public let excludedSharedPhotoCount: Int
+    public let excludedSharedVideoCount: Int
     public let videoCount: Int
     public let scanDate: Date
     public let fingerprint: String
@@ -102,12 +104,16 @@ public struct LibraryOverview: Sendable {
             let generated: Date
             let fingerprint: String
             let photos: Int
+            let excludedSharedPhotoCount: Int
+            let excludedSharedVideoCount: Int
             let videos: Int
             let locatedPhotos: Int
             let availability: [String: Int]
             let reviewReasons: [String: Int]
         }
         let summary = Summary(generated: scanDate, fingerprint: fingerprint, photos: photos.count,
+                              excludedSharedPhotoCount: excludedSharedPhotoCount,
+                              excludedSharedVideoCount: excludedSharedVideoCount,
                               videos: videoCount, locatedPhotos: locatedCount,
                               availability: Dictionary(uniqueKeysWithValues: OriginalAvailability.allCases.map { ($0.rawValue, count($0)) }),
                               reviewReasons: Dictionary(uniqueKeysWithValues: ReviewReason.allCases.map { ($0.rawValue, count($0)) }))
