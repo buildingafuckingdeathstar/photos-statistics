@@ -53,7 +53,7 @@ struct OverviewScreen: View {
                         Divider()
                     }
                 }
-                Text("Shared Albums excluded: \(overview.excludedSharedPhotoCount.formatted()) photos and \(overview.excludedSharedVideoCount.formatted()) videos. Main-library counts include hidden photos and burst members. A photo saved into the main library still counts there. No library changes have been made.").font(.caption).foregroundStyle(.secondary)
+                Text("Shared Albums excluded: \(overview.excludedSharedPhotoCount.formatted()) photos and \(overview.excludedSharedVideoCount.formatted()) videos. Main-library counts include hidden photos and burst members. A photo saved into the main library still counts there. The metadata scan does not change your library.").font(.caption).foregroundStyle(.secondary)
             }.padding(28)
         }
     }

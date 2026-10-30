@@ -162,6 +162,19 @@ final class PhotoCoverageTests: XCTestCase {
         }
     }
 
+    func testLocationCoordinatesAreReadFromMetadataWithoutOriginals() throws {
+        try fixture { db, schema in
+            _ = try db.rows("UPDATE ZASSET SET ZLATITUDE=1.3521,ZLONGITUDE=103.8198 WHERE Z_PK=1")
+            let result = try PhotoCoverage.inspect(db: db, schema: schema, library: URL(fileURLWithPath: "/unused"), checkPresence: { _, _ in .absent })
+            let overview = try XCTUnwrap(result.overview)
+            let photo = try XCTUnwrap(overview.photos.first { $0.id == "1" })
+            XCTAssertTrue(photo.hasLocation)
+            XCTAssertEqual(photo.location?.latitude, 1.3521)
+            XCTAssertEqual(photo.location?.longitude, 103.8198)
+            XCTAssertNil(overview.photos.first { $0.id == "2" }?.location)
+        }
+    }
+
     func testSharedAlbumsExcludedFromMainLibraryButLibraryScopeRetained() throws {
         try fixture { db, schema in
             _ = try db.rows("ALTER TABLE ZASSET ADD COLUMN ZCOLLECTIONSHARE INTEGER")

@@ -150,7 +150,7 @@ enum PhotoCoverage {
                    COALESCE(r.remote_n,f.remote_n), COALESCE(r.remote_min,f.remote_min), COALESCE(r.remote_max,f.remote_max),
                    e.ZASSET, \(metricSQL), a.Z_PK, \(dateSQL), \(cameraSQL),
                    CASE WHEN f.n=1 THEN 'unique-direct-original' ELSE hex(d.\(hashColumn)) END, \(originalNameSQL),
-                   \(uuidSQL), \(widthSQL), \(heightSQL), \(sharedSQL), CASE WHEN f.n=1 THEN 1 ELSE 0 END
+                   \(uuidSQL), \(widthSQL), \(heightSQL), \(sharedSQL), CASE WHEN f.n=1 THEN 1 ELSE 0 END, \(optional("a", "ZASSET", "ZLATITUDE")), \(optional("a", "ZASSET", "ZLONGITUDE"))
             FROM ZASSET a
             LEFT JOIN ZEXTENDEDATTRIBUTES e ON e.ZASSET=a.Z_PK
             LEFT JOIN ZADDITIONALASSETATTRIBUTES d ON d.ZASSET=a.Z_PK
@@ -192,6 +192,9 @@ enum PhotoCoverage {
                                       captureDate: date, camera: camera?.isEmpty == false ? camera : nil,
                                       hasLocation: locationIndex.map { row[10 + $0] == "1" } ?? false,
                                       availability: status, reason: reason, evidence: evidence,
+                                      location: row[offset + 10].flatMap(Double.init).flatMap { lat in
+                                          row[offset + 11].flatMap(Double.init).flatMap { PhotoLocation(latitude: lat, longitude: $0) }
+                                      },
                                       assetUUID: row[offset + 5], pixelWidth: row[offset + 6].flatMap(Int.init),
                                       pixelHeight: row[offset + 7].flatMap(Int.init)))
             totals[bucket] += 1

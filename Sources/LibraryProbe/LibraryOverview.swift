@@ -58,6 +58,7 @@ public struct PhotoRecord: Identifiable, Sendable {
     public let availability: OriginalAvailability
     public let reason: ReviewReason?
     public let evidence: String
+    public var location: PhotoLocation? = nil
     public let assetUUID: String?
     public let pixelWidth: Int?
     public let pixelHeight: Int?

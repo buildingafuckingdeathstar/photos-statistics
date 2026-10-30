@@ -171,7 +171,7 @@ struct PreviewConnectionBar: View {
             if store.state == .disconnected {
                 Button("Enable local previews") { Task { await store.connect(overview) } }
                     .buttonStyle(.borderedProminent)
-                    .help("macOS will ask for Photos access. This version only reads previews.")
+                    .help("macOS will ask for Photos access. Previews do not download originals. Location edits require a separate confirmation.")
             } else if store.state == .denied {
                 Button("Check Photos access") { Task { await store.prepare(overview) } }
             }

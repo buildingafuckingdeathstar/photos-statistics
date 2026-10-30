@@ -12,13 +12,14 @@ struct PhotosStatisticsApp: App {
 }
 
 enum LibrarySection: String, CaseIterable, Identifiable {
-    case overview, photos, review, diagnostics
+    case overview, photos, review, locations, diagnostics
     var id: String { rawValue }
     var title: String {
         switch self {
         case .overview: "Overview"
         case .photos: "Main library photos"
         case .review: "Availability review"
+        case .locations: "Missing locations"
         case .diagnostics: "Diagnostics"
         }
     }
@@ -27,6 +28,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
         case .overview: "square.grid.2x2"
         case .photos: "photo.on.rectangle"
         case .review: "checklist"
+        case .locations: "mappin.slash"
         case .diagnostics: "wrench.and.screwdriver"
         }
     }
@@ -134,7 +136,7 @@ struct LibraryWindow: View {
         NavigationSplitView {
             List(selection: $model.section) {
                 Section("Library") {
-                    ForEach([LibrarySection.overview, .photos, .review]) { section in
+                    ForEach([LibrarySection.overview, .photos, .locations, .review]) { section in
                         Label(section.title, systemImage: section.icon).tag(section)
                     }
                 }
@@ -144,7 +146,7 @@ struct LibraryWindow: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 225)
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Label("Read-only library access", systemImage: "lock.shield")
+                    Label("Read-only database access", systemImage: "lock.shield")
                     Text("Your photos stay on your Mac and in iCloud.").foregroundStyle(.secondary)
                 }.font(.caption).padding().frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -171,13 +173,14 @@ struct LibraryWindow: View {
                     case .overview: OverviewScreen(model: model, overview: overview)
                     case .photos: PhotoBrowser(overview: overview, status: $model.photoFilter, reason: nil, previews: model.previews)
                     case .review: ReviewScreen(model: model, overview: overview)
+                    case .locations: LocationReviewScreen(model: model, overview: overview)
                     case .diagnostics: EmptyView()
                     }
                 } else {
                     ContentUnavailableView {
                         Label("Get to know your photo library", systemImage: "photo.stack")
                     } description: {
-                        Text("Load your library for an overview and a closer look at original availability. This first version makes no changes to Photos.")
+                        Text("Load your library for an overview and a closer look at original availability. Location changes are available only after your review and confirmation.")
                     } actions: {
                         Button("Choose Photos Library…", action: model.chooseLibrary).buttonStyle(.borderedProminent)
                     }

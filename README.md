@@ -2,7 +2,7 @@
 
 A macOS app in development for exploring photographic metadata in Apple Photos, including library records whose original images are stored only in iCloud.
 
-The first app milestone is a read-only library overview and availability review. Trip detection, album suggestions, approved PhotoKit edits, detailed statistics and ChatGPT integration come later.
+The app provides a read-only library overview, availability review and guided missing-location review with individually confirmed PhotoKit location edits. Trip detection, album suggestions, detailed statistics and ChatGPT integration come later.
 
 ## First version
 
@@ -81,3 +81,11 @@ Successful access demonstrates technical feasibility on the tested system; App S
 - Add detailed photographic statistics and optional ChatGPT integration later.
 
 See [the OpenAI request draft](docs/openai-access-request.md). No request has been submitted. A public repository alone does not grant an open-source licence; the project licence is still to be selected.
+
+### Missing-location review
+
+Open **Missing locations** to split main-library photos without valid coordinates into **No nearby references** and **With nearby references**. Choose a 15-minute, one-hour (default), or three-hour window. The nearest located photo before and after each target provides evidence; no location is inferred automatically. References more than 1 km apart are flagged. Missing dates remain in the first category. Camera clock errors, travel and unrelated simultaneous photos can produce misleading references.
+
+Review the target preview, reference previews, capture times and reference map. **No — skip this photo** leaves Photos unchanged, with skips kept only for the current review session. **Yes — propose this location** opens a second confirmation showing both photos. **Apply location to this photo** requests one location edit through public PhotoKit, which may sync to iCloud. SQLite and library files remain read-only. Previews have downloads disabled; map tiles may use Apple's map service.
+
+Applying requires full Photos permission, locally available previews, unique validated main-library PhotoKit matches, fresh asset checks, no existing target location, an unchanged reference location and metadata-edit capability. It uses actual PhotoKit identifiers, never constructed identifiers. The UUID/date/dimensions bridge remains experimental and deliberately rejects unsupported or ambiguous matches. The user confirms the displayed photos before each edit. No batch edits or automatic changes are performed. Refresh after applying to update overview counts. Real-library edits require manual verification; automated tests do not modify a user's library.

@@ -126,7 +126,7 @@ final class PhotoPreviewStore: ObservableObject {
         options.resizeMode = .fast
         options.version = .current
         let token = generation
-        return manager.requestImage(for: asset, targetSize: CGSize(width: 480, height: 480), contentMode: .aspectFill, options: options) { image, info in
+        return manager.requestImage(for: asset, targetSize: CGSize(width: 480, height: 480), contentMode: .aspectFill, options: options) { [weak self] image, info in
             let result = Delivery(image: image,
                                   unavailable: (info?[PHImageResultIsInCloudKey] as? Bool == true) || info?[PHImageErrorKey] != nil,
                                   cancelled: info?[PHImageCancelledKey] as? Bool == true)
@@ -139,6 +139,40 @@ final class PhotoPreviewStore: ObservableObject {
                     completion(nil, result.unavailable ? "Preview is not available locally" : "No local preview returned")
                 }
             }
+        }
+    }
+
+    /// Uses actual fetched PhotoKit identifiers, then rechecks both assets immediately
+    /// before requesting a single metadata edit. Never opens SQLite for writing.
+    func applyLocation(to photo: PhotoRecord, from reference: PhotoRecord) async throws {
+        func failure(_ text: String) -> NSError {
+            NSError(domain: "PhotosStatistics.Location", code: 1, userInfo: [NSLocalizedDescriptionKey: text])
+        }
+        guard state == .ready, PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized else {
+            throw failure("Full Photos access is required. Enable previews and check Photos access first.")
+        }
+        func fresh(_ record: PhotoRecord) throws -> PHAsset {
+            guard let uuid = record.assetUUID.flatMap(UUID.init(uuidString:))?.uuidString,
+                  let mapped = assets[uuid], cache.object(forKey: uuid as NSString) != nil,
+                  let asset = PHAsset.fetchAssets(withLocalIdentifiers: [mapped.localIdentifier], options: nil).firstObject,
+                  asset.sourceType == .typeUserLibrary,
+                  PreviewIdentity.matches(record, identifier: asset.localIdentifier, date: asset.creationDate,
+                                          width: asset.pixelWidth, height: asset.pixelHeight) else {
+                throw failure("Both photos must have confirmed main-library matches and locally available previews. Reopen their previews and try again.")
+            }
+            return asset
+        }
+        let target = try fresh(photo)
+        let source = try fresh(reference)
+        guard target.localIdentifier != source.localIdentifier, target.location == nil,
+              target.canPerform(.properties), let location = source.location,
+              let expected = reference.location,
+              let actual = PhotoLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude),
+              actual.distance(to: expected) < 1 else {
+            throw failure("The photo or reference changed, already has a location, or cannot be edited. Refresh the library and review again.")
+        }
+        try await PHPhotoLibrary.shared().performChanges {
+            PHAssetChangeRequest(for: target).location = location
         }
     }
 

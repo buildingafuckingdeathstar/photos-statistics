@@ -8,7 +8,7 @@ The first tab is **Photos**, a lazy adaptive grid of all filtered photo records 
 
 The metadata database remains read-only. Optional previews use the public PhotoKit framework and the System Photo Library. The app has the Photos Library entitlement and a usage description. It requests authorization only in response to **Enable local previews**; startup and database scans do not open a permission dialog.
 
-Apple's PhotoKit authorization level for this access is named `readWrite`. This build uses it only to fetch asset metadata and request image previews. There are no `performChanges`, asset change requests, album change requests or original-file writes. Denied access leaves the list and analysis usable.
+Apple's PhotoKit authorization level for this access is named `readWrite`. The preview browser uses it to fetch asset metadata and request image previews. The separate Missing locations screen can request a single location edit through `performChanges` and `PHAssetChangeRequest`, only after explicit review and confirmation. There are no album changes or direct original-file writes. Denied access leaves the list and analysis usable.
 
 ## Matching
 
