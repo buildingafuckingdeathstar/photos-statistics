@@ -23,6 +23,7 @@ struct LocationBatchReviewScreen: View {
     @ObservedObject var model: LibraryModel
     let overview: LibraryOverview
     @AppStorage("locationBatchReferenceWindow") private var window = 3_600
+    @AppStorage("locationBatchGroupSpan") private var groupSpan = 1_800
     @State private var groups: [LocationReviewGroup] = []
     @State private var progress = LocationBatchProgress()
     @State private var selectedGroupID: String?
@@ -39,7 +40,7 @@ struct LocationBatchReviewScreen: View {
     private let columns = [GridItem(.adaptive(minimum: 115, maximum: 180), spacing: 10)]
     private var storageKey: String { "locationBatchReview.v1.\(overview.reviewScope)" }
     private var sessionFinished: Bool { progress.reviewedGroups >= 10 }
-    private var reviewDisabled: Bool { working || progress.isPaused || sessionFinished }
+    private var reviewDisabled: Bool { working || calculating || progress.isPaused || sessionFinished }
 
     private struct Proposal: Identifiable {
         let id = UUID()
@@ -75,15 +76,25 @@ struct LocationBatchReviewScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Review missing locations in groups").font(.title2.bold())
-            Text("Up to 30 photos over 30 minutes, using the same nearby references. Deselect exceptions or split a group before applying a location.")
+            Text("Choose how widely to group photos and how far to search for located references. Groups still split when their reference photos change or they reach 30 photos.")
                 .font(.callout).foregroundStyle(.secondary)
             sessionBar
             HStack {
-                Picker("References within", selection: $window) {
+                Picker("Group photos within", selection: $groupSpan) {
+                    Text("15 minutes").tag(900)
+                    Text("30 minutes").tag(1_800)
+                    Text("1 hour").tag(3_600)
+                    Text("3 hours").tag(10_800)
+                }.frame(width: 270)
+                    .help("Maximum time from the first photo to the last photo in each group. Increase this for broader groups.")
+                Picker("Find references within", selection: $window) {
                     Text("15 minutes").tag(900)
                     Text("1 hour").tag(3_600)
                     Text("3 hours").tag(10_800)
-                }.frame(width: 240)
+                }.frame(width: 290)
+                    .help("Search this far before and after each missing-location photo for a located reference. This does not set group duration.")
+            }.disabled(working)
+            HStack {
                 Picker("Queue", selection: $progress.queue) {
                     ForEach(LocationEvidence.allCases, id: \.self) { queue in
                         Text("\(queue.title) (\(queueCount(queue)))").tag(queue)
@@ -91,7 +102,14 @@ struct LocationBatchReviewScreen: View {
                 }
                 Toggle("Skipped", isOn: $showSkipped).toggleStyle(.checkbox)
                 if calculating { ProgressView().controlSize(.small) }
+                if !progress.splitPhotos.isEmpty {
+                    Button("Clear manual splits") {
+                        progress.splitPhotos.removeAll(); rebuild(); selectedGroupID = visible.first?.id; save()
+                    }.help("Allow previously split photos to be grouped again using these settings.")
+                }
             }.disabled(working)
+            Text("\(available.count.formatted()) groups across all queues · \(available.reduce(0) { $0 + $1.photos.count }.formatted()) photos · \(visible.count.formatted()) groups in this queue")
+                .font(.caption).foregroundStyle(.secondary)
             PreviewConnectionBar(store: model.previews, overview: overview)
             if let message { Text(message).font(.callout).textSelection(.enabled) }
             HSplitView {
@@ -111,7 +129,7 @@ struct LocationBatchReviewScreen: View {
                 }
             }
         }.padding(20)
-        .task(id: "\(overview.scanDate)-\(window)") {
+        .task(id: "\(overview.scanDate)-\(window)-\(groupSpan)") {
             if !restored {
                 if !overview.reviewScope.isEmpty, let data = UserDefaults.standard.data(forKey: storageKey),
                    let saved = try? JSONDecoder().decode(LocationBatchProgress.self, from: data) { progress = saved }
@@ -120,14 +138,17 @@ struct LocationBatchReviewScreen: View {
             calculating = true
             let photos = overview.photos
             let interval = TimeInterval(window)
+            let duration = TimeInterval(groupSpan)
+            let previousPhotoKey = current?.photos.first?.reviewKey
             let result = await Task.detached(priority: .userInitiated) {
-                LocationReviewGroups.make(LocationReview.items(in: photos, window: interval))
+                LocationReviewGroups.make(LocationReview.items(in: photos, window: interval), groupSpan: duration)
             }.value
             guard !Task.isCancelled else { return }
             groups = result
             rebuild()
             calculating = false
-            selectedGroupID = visible.first { $0.id == progress.lastGroupID }?.id ?? visible.first?.id
+            selectedGroupID = visible.first { $0.photos.contains { $0.reviewKey == previousPhotoKey } }?.id
+                ?? visible.first { $0.id == progress.lastGroupID }?.id ?? visible.first?.id
         }
         .task(id: overview.scanDate) { await model.previews.prepare(overview) }
         .onChange(of: selectedGroupID) {

@@ -38,6 +38,13 @@ extension PhotoRecord {
 }
 
 public enum LocationReviewGroups {
+    /// The UI's group-span setting controls both the overall duration and allowed
+    /// gaps. Reference-search distance is a separate setting on LocationReview.
+    public static func make(_ items: [LocationReviewItem], groupSpan: TimeInterval) -> [LocationReviewGroup] {
+        let duration = max(0, groupSpan)
+        return make(items, maximumGap: duration, maximumDuration: duration)
+    }
+
     public static func make(_ items: [LocationReviewItem], maximumGap: TimeInterval = 900,
                             maximumDuration: TimeInterval = 1_800, maximumCount: Int = 30) -> [LocationReviewGroup] {
         let sorted = items.sorted {

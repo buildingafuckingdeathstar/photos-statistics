@@ -52,6 +52,27 @@ final class LocationReviewGroupsTests: XCTestCase {
         XCTAssertEqual(LocationReviewGroup(items: [item("d", time: nil)]).evidence, .none)
     }
 
+    func testGroupSpanBroadensGroupsIndependentlyOfReferenceSearch() {
+        let refs = [photo("before", time: 0, latitude: 1), photo("after", time: 3_000, latitude: 1)]
+        let input = [item("one", time: 100, refs: refs), item("two", time: 2_200, refs: refs)]
+        XCTAssertEqual(LocationReviewGroups.make(input, groupSpan: 1_800).count, 2)
+        XCTAssertEqual(LocationReviewGroups.make(input, groupSpan: 3_600).map { $0.photos.count }, [2])
+        // A larger reference search need not change existing nearest references.
+        let photos = refs + input.map(\.photo)
+        let oneHour = LocationReview.items(in: photos, window: 3_600)
+        let threeHours = LocationReview.items(in: photos, window: 10_800)
+        XCTAssertEqual(oneHour.map { $0.references.map(\.id) }, threeHours.map { $0.references.map(\.id) })
+    }
+
+    func testBroadGroupSpanPreservesReferenceBoundariesAndThirtyPhotoCap() {
+        let before = photo("before", time: 0, latitude: 1)
+        let after = photo("after", time: 1_000, latitude: 1)
+        let input = (0..<35).map { item("\($0)", time: Double($0), refs: [before]) }
+            + [item("new-reference", time: 40, refs: [after])]
+        let groups = LocationReviewGroups.make(input, groupSpan: 10_800)
+        XCTAssertEqual(groups.map { $0.photos.count }, [1, 5, 30])
+    }
+
     func testProgressRetainsSkipsSelectionsSplitsAndResumeState() throws {
         var progress = LocationBatchProgress()
         progress.skipped = ["skipped-photo"]
