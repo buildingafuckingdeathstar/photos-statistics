@@ -86,6 +86,7 @@ public enum PreviewIdentity {
 }
 
 public struct LibraryOverview: Sendable {
+    public var reviewScope: String = ""
     public let photos: [PhotoRecord]
     public let excludedSharedPhotoCount: Int
     public let excludedSharedVideoCount: Int

@@ -156,6 +156,7 @@ public enum LibraryProbe {
             let coverage = try PhotoCoverage.inspect(db: snapshot, schema: schema, library: library, progress: progress)
             lines += coverage.lines
             overview = coverage.overview
+            overview?.reviewScope = SHA256.hash(data: Data(databaseURL.standardizedFileURL.path.utf8)).map { String(format: "%02x", $0) }.joined()
         } else {
             lines += ["", "Per-photo analysis skipped: unrecognized schema fingerprint."]
         }

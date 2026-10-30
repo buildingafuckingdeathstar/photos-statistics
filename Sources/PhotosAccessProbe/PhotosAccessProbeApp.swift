@@ -36,6 +36,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 
 @MainActor
 final class LibraryModel: ObservableObject {
+    @Published var locationAppliedKeys = Set<String>()
     @Published var overview: LibraryOverview?
     @Published var report = "No library has been scanned yet."
     @Published var busy = false
@@ -89,6 +90,7 @@ final class LibraryModel: ObservableObject {
         busy = true
         notice = nil
         overview = nil
+        locationAppliedKeys.removeAll()
         selectedURL = url
         libraryName = url.deletingPathExtension().lastPathComponent
         progress = "Preparing your library…"

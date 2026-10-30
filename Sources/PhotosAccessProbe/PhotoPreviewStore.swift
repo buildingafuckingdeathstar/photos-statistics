@@ -143,8 +143,12 @@ final class PhotoPreviewStore: ObservableObject {
     }
 
     /// Uses actual fetched PhotoKit identifiers, then rechecks both assets immediately
-    /// before requesting a single metadata edit. Never opens SQLite for writing.
+    /// before requesting one atomic batch of metadata edits. Never opens SQLite for writing.
     func applyLocation(to photo: PhotoRecord, from reference: PhotoRecord) async throws {
+        try await applyLocations(to: [photo], from: reference)
+    }
+
+    func applyLocations(to photos: [PhotoRecord], from reference: PhotoRecord) async throws {
         func failure(_ text: String) -> NSError {
             NSError(domain: "PhotosStatistics.Location", code: 1, userInfo: [NSLocalizedDescriptionKey: text])
         }
@@ -158,21 +162,25 @@ final class PhotoPreviewStore: ObservableObject {
                   asset.sourceType == .typeUserLibrary,
                   PreviewIdentity.matches(record, identifier: asset.localIdentifier, date: asset.creationDate,
                                           width: asset.pixelWidth, height: asset.pixelHeight) else {
-                throw failure("Both photos must have confirmed main-library matches and locally available previews. Reopen their previews and try again.")
+                throw failure("Every selected photo and the reference must have a confirmed main-library match and a locally available preview. Review all thumbnails, then try again.")
             }
             return asset
         }
-        let target = try fresh(photo)
+        guard !photos.isEmpty, photos.count <= 30, Set(photos.map(\.reviewKey)).count == photos.count else {
+            throw failure("Choose between 1 and 30 different photos for one batch.")
+        }
+        let targets = try photos.map(fresh)
         let source = try fresh(reference)
-        guard target.localIdentifier != source.localIdentifier, target.location == nil,
-              target.canPerform(.properties), let location = source.location,
+        guard Set(targets.map(\.localIdentifier)).count == targets.count,
+              targets.allSatisfy({ $0.localIdentifier != source.localIdentifier && $0.location == nil && $0.canPerform(.properties) }),
+              let location = source.location,
               let expected = reference.location,
               let actual = PhotoLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude),
               actual.distance(to: expected) < 1 else {
             throw failure("The photo or reference changed, already has a location, or cannot be edited. Refresh the library and review again.")
         }
         try await PHPhotoLibrary.shared().performChanges {
-            PHAssetChangeRequest(for: target).location = location
+            for target in targets { PHAssetChangeRequest(for: target).location = location }
         }
     }
 

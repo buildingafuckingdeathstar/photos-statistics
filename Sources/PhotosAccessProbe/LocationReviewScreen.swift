@@ -1,7 +1,7 @@
 import SwiftUI
 import MapKit
 
-struct LocationReviewScreen: View {
+struct IndividualLocationReviewScreen: View {
     @ObservedObject var model: LibraryModel
     let overview: LibraryOverview
     @State private var window = 3_600
@@ -16,7 +16,7 @@ struct LocationReviewScreen: View {
     @State private var working = false
     @State private var calculating = true
     private var visible: [LocationReviewItem] {
-        items.filter { !updated.contains($0.id) && (category == 1 ? $0.references.isEmpty : !$0.references.isEmpty) }
+        items.filter { !updated.contains($0.id) && !model.locationAppliedKeys.contains($0.photo.reviewKey) && (category == 1 ? $0.references.isEmpty : !$0.references.isEmpty) }
     }
     private var current: LocationReviewItem? { visible.first { $0.id == selected } }
     private struct LocationProposal: Identifiable {
@@ -162,6 +162,7 @@ struct LocationReviewScreen: View {
                             do {
                                 try await model.previews.applyLocation(to: proposal.photo, from: proposal.reference)
                                 updated.insert(proposal.photo.id)
+                                model.locationAppliedKeys.insert(proposal.photo.reviewKey)
                                 selected = nil
                                 message = "Location updated in Photos. Refresh the library to update the overview."
                             } catch { message = "Location was not applied: \(error.localizedDescription)" }

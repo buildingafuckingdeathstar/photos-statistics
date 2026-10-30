@@ -8,13 +8,13 @@ The first tab is **Photos**, a lazy adaptive grid of all filtered photo records 
 
 The metadata database remains read-only. Optional previews use the public PhotoKit framework and the System Photo Library. The app has the Photos Library entitlement and a usage description. It requests authorization only in response to **Enable local previews**; startup and database scans do not open a permission dialog.
 
-Apple's PhotoKit authorization level for this access is named `readWrite`. The preview browser uses it to fetch asset metadata and request image previews. The separate Missing locations screen can request a single location edit through `performChanges` and `PHAssetChangeRequest`, only after explicit review and confirmation. There are no album changes or direct original-file writes. Denied access leaves the list and analysis usable.
+Apple's PhotoKit authorization level for this access is named `readWrite`. The preview browser uses it to fetch asset metadata and request image previews. The separate Missing locations screen can request confirmed individual or batch location edits through `performChanges` and `PHAssetChangeRequest`, only after explicit review and confirmation. There are no album changes or direct original-file writes. Denied access leaves the list and analysis usable.
 
 ## Matching
 
 The reader retains the database asset UUID, current dimensions and library capture date in memory. The preview service enumerates actual PhotoKit identifiers, including Shared Albums and burst members. It recognizes only the observed UUID component of those returned identifiers, never constructs an identifier by appending a guessed suffix, and requires date and dimensions to agree. Duplicate mappings and unsupported identifier formats are rejected.
 
-PhotoKit identifiers are documented as opaque, so recognizing the UUID representation is an experimental compatibility bridge, not an Apple-guaranteed conversion. A selected non-System library may have no matches. Unmatched records stay placeholders; filename similarity is never used to guess. This preview matching is not sufficient authority for future editing features, which need their own library and identity checks.
+PhotoKit identifiers are documented as opaque, so recognizing the UUID representation is an experimental compatibility bridge, not an Apple-guaranteed conversion. A selected non-System library may have no matches. Unmatched records stay placeholders; filename similarity is never used to guess. Location editing additionally requires fresh main-library PhotoKit assets, matching UUID/date/dimensions, available previews, edit capability, an unchanged reference location and no existing target location. Actual PhotoKit identifiers are used for the change requests. The user confirms the displayed selection before each transaction; this experimental bridge is still not an Apple-guaranteed library identifier conversion.
 
 ## Local-only images
 
