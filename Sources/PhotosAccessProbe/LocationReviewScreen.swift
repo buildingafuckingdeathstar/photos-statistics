@@ -8,6 +8,7 @@ struct LocationReviewScreen: View {
     @State private var category = 2
     @State private var items: [LocationReviewItem] = []
     @State private var selected: String?
+    @State private var selectedReferenceID: String?
     @State private var skipped = Set<String>()
     @State private var updated = Set<String>()
     @State private var pending: LocationProposal?
@@ -54,54 +55,73 @@ struct LocationReviewScreen: View {
                         }.tag(item.id).padding(.vertical, 4)
                     }
                 }.frame(minWidth: 220, idealWidth: 270, maxWidth: 320).disabled(working)
-                ScrollView {
-                    if let item = current {
-                        VStack(alignment: .leading, spacing: 18) {
-                            Text("Photo without a location").font(.headline)
-                            preview(item.photo).frame(height: 240)
-                            if item.references.isEmpty {
-                                Text(item.photo.captureDate == nil
-                                     ? "This photo has no capture date, so nearby photos cannot be found."
-                                     : "No located photos were found within the selected time window. Try a wider window, or leave this photo for manual review.")
+                VStack(spacing: 0) {
+                    ScrollView {
+                        if let item = current {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Was this photo taken at the highlighted location?").font(.headline)
+                                HStack(alignment: .top, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Missing location").font(.subheadline.bold())
+                                        preview(item.photo).frame(height: 185)
+                                    }.frame(maxWidth: .infinity)
+                                    ForEach(item.references) { reference in
+                                        let chosen = reference.id == chosenReference(for: item)?.id
+                                        Button { selectedReferenceID = reference.id } label: {
+                                            VStack(alignment: .leading, spacing: 8) {
+                                                Label(timeDifference(reference, from: item.photo), systemImage: chosen ? "checkmark.circle.fill" : "circle")
+                                                    .font(.subheadline.bold()).lineLimit(2)
+                                                preview(reference).frame(height: 185)
+                                            }.padding(8)
+                                                .frame(maxWidth: .infinity)
+                                                .background(chosen ? Color.accentColor.opacity(0.1) : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+                                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(chosen ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: chosen ? 2 : 1))
+                                        }.buttonStyle(.plain).disabled(working)
+                                            .help("Use this photo's location for the proposal")
+                                    }
+                                }
+                                if item.references.isEmpty {
+                                    Text(item.photo.captureDate == nil
+                                         ? "This photo has no capture date, so nearby photos cannot be found."
+                                         : "No located photos were found within the selected time window. Try a wider window, or leave this photo for manual review.")
+                                } else if let reference = chosenReference(for: item), let location = reference.location {
+                                    if item.conflictingLocations {
+                                        Label("The references are more than 1 km apart. Choose the correct reference before confirming.", systemImage: "exclamationmark.triangle")
+                                            .font(.callout).foregroundStyle(.orange)
+                                    }
+                                    Text("Proposed location · from \(reference.filename)").font(.subheadline.bold())
+                                    Map(initialPosition: .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude), latitudinalMeters: 2_000, longitudinalMeters: 2_000))) {
+                                        Marker("Proposed location", coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude))
+                                    }.frame(height: 180).clipShape(RoundedRectangle(cornerRadius: 8)).id(reference.id)
+                                    Text("\(location.latitude, specifier: "%.6f"), \(location.longitude, specifier: "%.6f") · Select a reference photo above to change the proposal.")
+                                        .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                                }
+                            }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ContentUnavailableView("Choose a photo to review", systemImage: "mappin.and.ellipse", description: Text(visible.isEmpty ? "No photos in this category for the selected time window." : "Select a photo from the list to compare it with nearby located photos and their map."))
+                        }
+                    }
+                    if let item = current, let reference = chosenReference(for: item) {
+                        Divider()
+                        HStack {
+                            if skipped.contains(item.id) {
+                                Text("Skipped · no change made").font(.callout).foregroundStyle(.secondary)
+                                Button("Review again") { skipped.remove(item.id) }.disabled(working)
                             } else {
-                                Text("Was this taken at the same location as one of these photos?").font(.headline)
-                                if item.conflictingLocations {
-                                    Label("The reference locations are more than 1 km apart. They may show travel between different places.", systemImage: "exclamationmark.triangle")
-                                        .foregroundStyle(.orange)
-                                }
-                                ForEach(item.references) { reference in
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        preview(reference).frame(height: 200)
-                                        if let date = reference.captureDate, let targetDate = item.photo.captureDate {
-                                            let minutes = abs(date.timeIntervalSince(targetDate)) / 60
-                                            Text("\(minutes.formatted(.number.precision(.fractionLength(1)))) minutes \(date < targetDate ? "before" : "after") this photo")
-                                                .font(.callout)
-                                        }
-                                        if let location = reference.location {
-                                            Map(initialPosition: .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude), latitudinalMeters: 2_000, longitudinalMeters: 2_000))) {
-                                                Marker("Reference location", coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude))
-                                            }.frame(height: 160).id(reference.id)
-                                            Text("\(location.latitude, specifier: "%.6f"), \(location.longitude, specifier: "%.6f")").font(.caption).textSelection(.enabled)
-                                        }
-                                        Button("Yes — propose this location") {
-                                            pending = LocationProposal(photo: item.photo, reference: reference)
-                                        }.buttonStyle(.borderedProminent).disabled(working || skipped.contains(item.id))
-                                    }.padding(14).background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
-                                }
-                                Button("No — skip this photo") {
+                                Button("NOK — leave unchanged") {
                                     skipped.insert(item.id)
                                     message = "Skipped. No location was changed. Skips are kept for this review session."
                                     selected = visible.first { !skipped.contains($0.id) }?.id
                                 }.disabled(working)
-                                if skipped.contains(item.id) {
-                                    Button("Review again") { skipped.remove(item.id) }.disabled(working)
-                                }
+                                Spacer()
+                                Button("OK — use this location…") {
+                                    pending = LocationProposal(photo: item.photo, reference: reference)
+                                }.buttonStyle(.borderedProminent).disabled(working)
                             }
-                        }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        ContentUnavailableView("Choose a photo to review", systemImage: "mappin.and.ellipse", description: Text(visible.isEmpty ? "No photos in this category for the selected time window." : "Select a photo from the list to see it alongside nearby references."))
+                        }.padding(12)
                     }
                 }.frame(minWidth: 480)
+
             }
         }.padding(20)
         .task(id: "\(overview.scanDate)-\(window)") {
@@ -116,6 +136,7 @@ struct LocationReviewScreen: View {
         }
         .task(id: overview.scanDate) { await model.previews.prepare(overview) }
         .onChange(of: category) { selected = nil }
+        .onChange(of: selected) { selectedReferenceID = nil }
         .sheet(item: $pending) { proposal in
             VStack(alignment: .leading, spacing: 18) {
                 Text("Apply this location in Photos?").font(.title2.bold())
@@ -146,6 +167,18 @@ struct LocationReviewScreen: View {
                 }
             }.padding(24).frame(width: 570)
         }
+    }
+
+    private func chosenReference(for item: LocationReviewItem) -> PhotoRecord? {
+        if let selectedReferenceID, let selected = item.references.first(where: { $0.id == selectedReferenceID }) { return selected }
+        guard let date = item.photo.captureDate else { return nil }
+        return item.references.min { abs(($0.captureDate ?? .distantPast).timeIntervalSince(date)) < abs(($1.captureDate ?? .distantPast).timeIntervalSince(date)) }
+    }
+
+    private func timeDifference(_ reference: PhotoRecord, from photo: PhotoRecord) -> String {
+        guard let date = reference.captureDate, let target = photo.captureDate else { return "Located reference" }
+        let minutes = abs(date.timeIntervalSince(target)) / 60
+        return "\(minutes.formatted(.number.precision(.fractionLength(1)))) min \(date < target ? "before" : "after")"
     }
 
     private func preview(_ photo: PhotoRecord) -> some View {
