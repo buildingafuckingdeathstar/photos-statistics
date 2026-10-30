@@ -56,6 +56,7 @@ struct LocationReviewScreen: View {
                     }
                 }.frame(minWidth: 220, idealWidth: 270, maxWidth: 320).disabled(working)
                 VStack(spacing: 0) {
+                    GeometryReader { geometry in
                     ScrollView {
                         if let item = current {
                             VStack(alignment: .leading, spacing: 14) {
@@ -90,9 +91,11 @@ struct LocationReviewScreen: View {
                                             .font(.callout).foregroundStyle(.orange)
                                     }
                                     Text("Proposed location · from \(reference.filename)").font(.subheadline.bold())
-                                    Map(initialPosition: .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude), latitudinalMeters: 2_000, longitudinalMeters: 2_000))) {
-                                        Marker("Proposed location", coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude))
-                                    }.frame(height: 180).clipShape(RoundedRectangle(cornerRadius: 8)).id(reference.id)
+                                    LocationMap(location: location)
+                                        .frame(height: max(180, geometry.size.height - (item.conflictingLocations ? 370 : 340)))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    Text("Scroll to zoom · Drag to move · Use + / − for zoom controls")
+                                        .font(.caption).foregroundStyle(.secondary)
                                     Text("\(location.latitude, specifier: "%.6f"), \(location.longitude, specifier: "%.6f") · Select a reference photo above to change the proposal.")
                                         .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                                 }
@@ -100,6 +103,7 @@ struct LocationReviewScreen: View {
                         } else {
                             ContentUnavailableView("Choose a photo to review", systemImage: "mappin.and.ellipse", description: Text(visible.isEmpty ? "No photos in this category for the selected time window." : "Select a photo from the list to compare it with nearby located photos and their map."))
                         }
+                    }
                     }
                     if let item = current, let reference = chosenReference(for: item) {
                         Divider()
