@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		13236325E263AE199048733A /* PhotoChangeTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF0E2586956D7B2E6440A13F /* PhotoChangeTransaction.swift */; };
 		13E63C2CA9691ABDA4481A70 /* OverviewScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A088A9B04961F68343C80A01 /* OverviewScreen.swift */; };
 		1B3049974F78A879B1AB4734 /* LocationBatchReviewScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9E9876E3E9A7C4B2592DA5 /* LocationBatchReviewScreen.swift */; };
 		1D02FE63AD793BB7FCD8EF7D /* PhotoPreviewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BFB3708C9076B87AD26400C /* PhotoPreviewStore.swift */; };
@@ -42,6 +43,7 @@
 		BC6AF8FE6F9C7D8201C76780 /* PhotoCoverage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCoverage.swift; sourceTree = "<group>"; };
 		C454AB613A45BDAB91DF1325 /* PhotosAccessProbe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotosAccessProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6180619D4F1A38E801E3A3A /* LibraryProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryProbe.swift; sourceTree = "<group>"; };
+		EF0E2586956D7B2E6440A13F /* PhotoChangeTransaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoChangeTransaction.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,6 +101,7 @@
 				C6180619D4F1A38E801E3A3A /* LibraryProbe.swift */,
 				AECC17A52E5EC03718E54872 /* LocationReview.swift */,
 				3822FD024F20540F65AFE28C /* LocationReviewGroups.swift */,
+				EF0E2586956D7B2E6440A13F /* PhotoChangeTransaction.swift */,
 				BC6AF8FE6F9C7D8201C76780 /* PhotoCoverage.swift */,
 				78D5D7467DEBD0E2C6811A3E /* ReferenceInvestigation.swift */,
 			);
@@ -182,6 +185,7 @@
 				31A44602FD37EB76E9876A54 /* LocationReviewScreen.swift in Sources */,
 				13E63C2CA9691ABDA4481A70 /* OverviewScreen.swift in Sources */,
 				4A7B3BAC9DF7ABDDB502B5F8 /* PhotoBrowser.swift in Sources */,
+				13236325E263AE199048733A /* PhotoChangeTransaction.swift in Sources */,
 				2C798ABD376EF2BDF9F426A2 /* PhotoCoverage.swift in Sources */,
 				1D02FE63AD793BB7FCD8EF7D /* PhotoPreviewStore.swift in Sources */,
 				F2DC568D0D930C2F7EE7E14E /* PhotosAccessProbeApp.swift in Sources */,

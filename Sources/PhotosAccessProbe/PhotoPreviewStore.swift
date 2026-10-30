@@ -179,9 +179,11 @@ final class PhotoPreviewStore: ObservableObject {
               actual.distance(to: expected) < 1 else {
             throw failure("The photo or reference changed, already has a location, or cannot be edited. Refresh the library and review again.")
         }
-        try await PHPhotoLibrary.shared().performChanges {
-            for target in targets { PHAssetChangeRequest(for: target).location = location }
-        }
+        try await PhotoChangeTransaction.perform(assets: targets, change: { @Sendable target in
+            PHAssetChangeRequest(for: target).location = location
+        }, submit: { @Sendable changes, completion in
+            PHPhotoLibrary.shared().performChanges(changes, completionHandler: completion)
+        })
     }
 
     func cancel(_ request: PHImageRequestID?) {
